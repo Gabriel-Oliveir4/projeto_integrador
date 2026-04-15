@@ -15,111 +15,118 @@ O **prontuário** não é armazenado no banco — ele é gerado sob demanda como
 ```plantuml
 @startuml
 skinparam linetype ortho
+left to right direction
 
-entity "medico" as med {
-  * id : SERIAL <<PK>>
-  --
-  * nome : VARCHAR(100)
-  * sobrenome : VARCHAR(100)
-  * email : VARCHAR(150) <<UNIQUE>>
-  * senha_hash : VARCHAR(255)
-  * celular : VARCHAR(20)
-  * ativo : BOOLEAN [default true]
-  * criado_em : TIMESTAMPTZ [default NOW()]
-  atualizado_em : TIMESTAMPTZ
+' ── Linha 1: núcleo clínico ──────────────────
+together {
+  entity "medico" as med {
+    * id : SERIAL <<PK>>
+    --
+    * nome : VARCHAR(100)
+    * sobrenome : VARCHAR(100)
+    * email : VARCHAR(150) <<UNIQUE>>
+    * senha_hash : VARCHAR(255)
+    * celular : VARCHAR(20)
+    * ativo : BOOLEAN [default true]
+    * criado_em : TIMESTAMPTZ [default NOW()]
+    atualizado_em : TIMESTAMPTZ
+  }
+
+  entity "paciente" as pac {
+    * id : SERIAL <<PK>>
+    --
+    * medico_id : INT <<FK medico.id>>
+    * nome_completo : VARCHAR(200)
+    data_nascimento : DATE
+    celular : VARCHAR(20)
+    * ativo : BOOLEAN [default true]
+    * data_cadastro : DATE [default CURRENT_DATE]
+    observacoes : TEXT
+    * criado_em : TIMESTAMPTZ [default NOW()]
+    atualizado_em : TIMESTAMPTZ
+  }
+
+  entity "ficha_inicial" as ficha {
+    * id : SERIAL <<PK>>
+    --
+    * paciente_id : INT <<FK paciente.id>>
+    queixa_principal : TEXT
+    historico_clinico : TEXT
+    diagnostico : VARCHAR(255)
+    observacoes : TEXT
+    * criado_em : TIMESTAMPTZ [default NOW()]
+    atualizado_em : TIMESTAMPTZ
+  }
+
+  entity "plano_tratamento" as plano {
+    * id : SERIAL <<PK>>
+    --
+    * ficha_inicial_id : INT <<FK ficha_inicial.id>>
+    objetivos : TEXT
+    frequencia_semanal : INT
+    sessoes_previstas : INT
+    data_inicio : DATE
+    data_previsao_alta : DATE
+    observacoes : TEXT
+    * ativo : BOOLEAN [default true]
+    * criado_em : TIMESTAMPTZ [default NOW()]
+    atualizado_em : TIMESTAMPTZ
+  }
 }
 
-entity "paciente" as pac {
-  * id : SERIAL <<PK>>
-  --
-  * medico_id : INT <<FK medico.id>>
-  * nome_completo : VARCHAR(200)
-  data_nascimento : DATE
-  celular : VARCHAR(20)
-  * ativo : BOOLEAN [default true]
-  * data_cadastro : DATE [default CURRENT_DATE]
-  observacoes : TEXT
-  * criado_em : TIMESTAMPTZ [default NOW()]
-  atualizado_em : TIMESTAMPTZ
+' ── Linha 2: sessões, exercícios e anexos ─────
+together {
+  entity "paciente_anexo" as anx {
+    * id : SERIAL <<PK>>
+    --
+    * paciente_id : INT <<FK paciente.id>>
+    * nome_arquivo : VARCHAR(255)
+    * caminho_arquivo : VARCHAR(500)
+    * tipo_arquivo : VARCHAR(50)
+    tamanho_bytes : BIGINT
+    anotacao : TEXT
+    * criado_em : TIMESTAMPTZ [default NOW()]
+  }
+
+  entity "sessao" as ses {
+    * id : SERIAL <<PK>>
+    --
+    * paciente_id : INT <<FK paciente.id>>
+    * plano_tratamento_id : INT <<FK plano_tratamento.id>>
+    * data_sessao : TIMESTAMPTZ [default NOW()]
+    * status : VARCHAR(20) [default 'em_andamento']
+    observacao_geral : TEXT
+    * criado_em : TIMESTAMPTZ [default NOW()]
+  }
+
+  entity "sessao_exercicio" as se {
+    * id : SERIAL <<PK>>
+    --
+    * sessao_id : INT <<FK sessao.id>>
+    * exercicio_id : INT <<FK exercicio.id>>
+    comentario : TEXT
+    ordem : INT
+  }
+
+  entity "exercicio" as exe {
+    * id : SERIAL <<PK>>
+    --
+    * nome : VARCHAR(150)
+    descricao : TEXT
+    foto_url : VARCHAR(500)
+    * ativo : BOOLEAN [default true]
+    * criado_em : TIMESTAMPTZ [default NOW()]
+  }
 }
 
-entity "paciente_anexo" as anx {
-  * id : SERIAL <<PK>>
-  --
-  * paciente_id : INT <<FK paciente.id>>
-  * nome_arquivo : VARCHAR(255)
-  * caminho_arquivo : VARCHAR(500)
-  * tipo_arquivo : VARCHAR(50)
-  tamanho_bytes : BIGINT
-  anotacao : TEXT
-  * criado_em : TIMESTAMPTZ [default NOW()]
-}
-
-entity "ficha_inicial" as ficha {
-  * id : SERIAL <<PK>>
-  --
-  * paciente_id : INT <<FK paciente.id>>
-  queixa_principal : TEXT
-  historico_clinico : TEXT
-  diagnostico : VARCHAR(255)
-  observacoes : TEXT
-  * criado_em : TIMESTAMPTZ [default NOW()]
-  atualizado_em : TIMESTAMPTZ
-}
-
-entity "plano_tratamento" as plano {
-  * id : SERIAL <<PK>>
-  --
-  * ficha_inicial_id : INT <<FK ficha_inicial.id>>
-  objetivos : TEXT
-  frequencia_semanal : INT
-  sessoes_previstas : INT
-  data_inicio : DATE
-  data_previsao_alta : DATE
-  observacoes : TEXT
-  * ativo : BOOLEAN [default true]
-  * criado_em : TIMESTAMPTZ [default NOW()]
-  atualizado_em : TIMESTAMPTZ
-}
-
-entity "exercicio" as exe {
-  * id : SERIAL <<PK>>
-  --
-  * nome : VARCHAR(150)
-  descricao : TEXT
-  foto_url : VARCHAR(500)
-  * ativo : BOOLEAN [default true]
-  * criado_em : TIMESTAMPTZ [default NOW()]
-}
-
-entity "sessao" as ses {
-  * id : SERIAL <<PK>>
-  --
-  * paciente_id : INT <<FK paciente.id>>
-  * plano_tratamento_id : INT <<FK plano_tratamento.id>>
-  * data_sessao : TIMESTAMPTZ [default NOW()]
-  * status : VARCHAR(20) [default 'em_andamento']
-  observacao_geral : TEXT
-  * criado_em : TIMESTAMPTZ [default NOW()]
-}
-
-entity "sessao_exercicio" as se {
-  * id : SERIAL <<PK>>
-  --
-  * sessao_id : INT <<FK sessao.id>>
-  * exercicio_id : INT <<FK exercicio.id>>
-  comentario : TEXT
-  ordem : INT
-}
-
-med ||--o{ pac
-pac ||--o{ anx
-pac ||--o{ ses
-pac ||--o{ ficha
-ficha ||--o{ plano
-plano ||--o{ ses
-ses ||--o{ se
-exe ||--o{ se
+med    ||--o{ pac
+pac    ||--o{ anx
+pac    ||--o{ ses
+pac    ||--o{ ficha
+ficha  ||--o{ plano
+plano  ||--o{ ses
+ses    ||--o{ se
+exe    ||--o{ se
 
 @enduml
 ```

@@ -1,91 +1,88 @@
-# Documentação do Projeto: Aplicativo para Profissionais da Saúde
+# Documentação do Projeto: Aplicativo para Fisioterapeutas
 
-## 1. Objetivo do Projeto
+## 1. Objetivo
 
-Desenvolver um aplicativo web para profissionais da saúde que permita cadastrar pacientes, conduzir sessões com uma bateria de exercícios comentada e, quando necessário, gerar automaticamente um prontuário do paciente com base nessas sessões.
+Aplicativo web para fisioterapeutas cadastrarem pacientes, conduzirem sessões com exercícios selecionados e comentados, e gerarem um prontuário em PDF sob demanda.
 
-O sistema gira em torno dos seguintes conceitos centrais:
+O sistema tem as seguintes tabelas no banco de dados, mais o prontuário que é gerado sob demanda e não é armazenado:
 
-1. **Médico** — cadastro e autenticação do profissional responsável.
-2. **Paciente** — cadastro e dados do paciente, vinculado ao médico.
-3. **Ficha Inicial** — registro do motivo da consulta, queixa principal, histórico clínico e diagnóstico.
+1. **Médico** — conta do profissional, usada para autenticação e vínculo com todos os dados.
+2. **Paciente** — dados cadastrais, vinculado ao médico.
+3. **Ficha Inicial** — queixa principal, histórico clínico e diagnóstico do paciente.
 4. **Plano de Tratamento** — objetivos terapêuticos, frequência semanal, sessões previstas e previsão de alta.
-5. **Sessão** — atendimento realizado, com exercícios selecionados e comentários.
-6. **Banco de Exercícios (CRM)** — banco compartilhado de exercícios, cadastrados pelo administrador do sistema, com nome, descrição e foto. Todos os fisioterapeutas têm acesso ao mesmo catálogo.
+5. **Sessão** — atendimento realizado, com exercícios selecionados e comentários por exercício.
+6. **Banco de Exercícios** — catálogo compartilhado entre todos os fisioterapeutas, gerenciado pelo administrador do sistema. Cada exercício tem nome, descrição e foto.
 7. **Anexos** — exames, laudos e outros documentos do paciente.
-8. **Prontuário** — relatório gerado sob demanda (PDF), compilando ficha inicial + plano de tratamento + sessões + exercícios + anexos. Não é armazenado no banco.
+8. **Prontuário** _(sem tabela)_ — relatório PDF gerado sob demanda, compilando ficha inicial + plano + sessões + exercícios + anexos.
 
 ---
+---
+
+
 
 ## 2. User Story
 
-> **User Story:**
-> Eu, Camila Haab, preciso de um aplicativo onde eu possa me cadastrar e fazer login. Depois, cadastro meus pacientes e preencho uma ficha inicial com queixa, histórico clínico e diagnóstico. Para cada paciente, defino um plano de tratamento com objetivos, frequência e previsão de alta. Inicio sessões de fisioterapia vinculadas ao plano, onde monto uma bateria de exercícios a partir do banco compartilhado de exercícios do sistema (com nome, descrição e foto) e registro um comentário em cada exercício realizado (como foi a execução, o desempenho, observações). Posso anexar exames e laudos ao paciente. Quando achar necessário, gero um prontuário em PDF que compila ficha inicial, plano de tratamento, todas as sessões realizadas, exercícios com comentários e anexos.
+> Eu, Camila Haab, preciso de um sistema onde eu me cadastre e faça login. Cadastro meus pacientes e preencho uma ficha inicial com queixa, histórico clínico e diagnóstico. Para cada paciente, defino um plano de tratamento com objetivos, frequência e previsão de alta. Conduzo sessões vinculadas ao plano, selecionando exercícios do banco compartilhado e registrando um comentário em cada um (execução, desempenho, observações). Posso anexar exames e laudos ao paciente. Quando necessário, gero um prontuário em PDF com ficha inicial, plano, todas as sessões e anexos.
 
 ---
 
-## 3. Módulos do Sistema
+## 3. Módulos
 
-### 3.1 Autenticação (Médico)
-- Cadastro do profissional: nome, sobrenome, e-mail, senha e celular.
-- Login com e-mail e senha (senha armazenada como hash com salt — bcrypt/argon2).
-- Todas as entidades do sistema são vinculadas ao médico logado.
+### 3.1 Autenticação
+- Cadastro: nome, sobrenome, e-mail, senha e celular.
+- Login com e-mail e senha. Senha armazenada com hash + salt (bcrypt/argon2) //precisa?
+- Todas as entidades são vinculadas ao médico autenticado.
 
-### 3.2 Cadastro de Paciente
-- Formulário com dados: nome completo, data de nascimento, celular e observações.
-- Listagem de todos os pacientes do médico (filtro por ativos/inativos).
-- Página individual do paciente com histórico de sessões, ficha inicial, plano de tratamento e anexos.
+### 3.2 Paciente
+- Cadastro: nome completo, data de nascimento, celular e observações.
+- Listagem com filtro por ativos/inativos.
+- Página do paciente com ficha inicial, plano de tratamento, histórico de sessões e anexos.
 
 ### 3.3 Ficha Inicial
-- Registro inicial do paciente ao chegar: queixa principal, histórico clínico, diagnóstico e observações.
+- Registro de queixa principal, histórico clínico, diagnóstico e observações.
 - Vinculada ao paciente.
 
 ### 3.4 Plano de Tratamento
-- Definido a partir da ficha inicial do paciente.
-- Contém: objetivos terapêuticos, frequência semanal, sessões previstas, data de início e previsão de alta.
-- Um paciente pode ter mais de um plano ao longo do tempo (o vigente é o que está ativo).
+- Campos: objetivos terapêuticos, frequência semanal, sessões previstas, data de início e previsão de alta.
+- Um paciente pode ter mais de um plano ao longo do tempo; o ativo é o vigente.
 
 ### 3.5 Sessões
-- Iniciar uma nova sessão vinculada a um paciente e ao plano de tratamento ativo.
-- Montar a bateria de exercícios da sessão selecionando itens do banco de exercícios.
-- Para cada exercício incluído, adicionar um comentário (execução, desempenho, observações).
-- Status da sessão: `em_andamento`, `finalizada` ou `cancelada`.
-- Encerrar e salvar a sessão com observação geral.
-- Visualizar sessões anteriores com os exercícios e comentários registrados.
-- As sessões formam o **mapa de evolução** do paciente.
+- Criar sessão vinculada a um paciente e ao plano ativo.
+- Selecionar exercícios do banco e registrar um comentário por exercício.
+- Status: `em_andamento`, `finalizada` ou `cancelada`.
+- Encerrar com observação geral.
+- Histórico de sessões anteriores com exercícios e comentários.
 
-### 3.6 Banco de Exercícios (CRM Compartilhado)
-- Banco de exercícios compartilhado entre todos os fisioterapeutas cadastrados no sistema.
-- Os exercícios são cadastrados e gerenciados pelo **administrador do sistema**, não pelos profissionais.
-- Cada exercício tem: nome, descrição (opcional) e foto/imagem (opcional).
-- Exercícios podem ser ativados/desativados pelo administrador.
-- Os fisioterapeutas apenas consultam e selecionam exercícios do banco durante as sessões.
+### 3.6 Banco de Exercícios
+- Catálogo compartilhado entre todos os fisioterapeutas do sistema.
+- Cadastro e gestão feitos pelo administrador; profissionais apenas consultam e selecionam.
+- Campos por exercício: nome, descrição (opcional) e foto (opcional).
+- Exercícios podem ser ativados/desativados.
 
-### 3.7 Anexos do Paciente
-- Upload de arquivos relacionados ao paciente (exames, laudos, etc.).
-- Cada anexo registra: nome do arquivo, caminho, tipo (MIME), tamanho e uma anotação opcional.
+### 3.7 Anexos
+- Upload de arquivos do paciente (exames, laudos, etc.).
+- Registra: nome, caminho, tipo MIME, tamanho e anotação opcional.
 
 ### 3.8 Prontuário
-- **Não é armazenado no banco** — é gerado sob demanda como relatório (PDF).
-- Compila: dados do paciente + ficha inicial + plano de tratamento + sessões realizadas + exercícios com comentários + anexos.
-- O profissional decide quando gerar, acionando manualmente por um botão na página do paciente.
-- O backend monta o documento em tempo real (HTML → PDF) e disponibiliza para visualização e download.
+- Não armazenado no banco — gerado sob demanda (HTML → PDF).
+- Compila: dados do paciente, ficha inicial, plano de tratamento, sessões com exercícios e comentários, e anexos.
+- Gerado manualmente via botão na página do paciente.
 
 ---
 
-## 4. Telas Necessárias
+## 4. Telas
 
-| Tela | O que faz |
+| Tela | Descrição |
 | :--- | :--- |
-| **Cadastro / Login** | Cadastro do médico e autenticação (e-mail + senha) |
-| **Dashboard** | Lista de pacientes do médico e acesso rápido às sessões recentes |
-| **Paciente** | Dados do paciente + ficha inicial + plano de tratamento + histórico de sessões + anexos + botão para gerar prontuário |
-| **Ficha Inicial** | Registro de queixa principal, histórico clínico e diagnóstico |
-| **Plano de Tratamento** | Definição de objetivos, frequência, sessões previstas e previsão de alta |
-| **Sessão** | Montagem da bateria de exercícios + campo de comentário por exercício + observação geral |
-| **Banco de Exercícios** | Consulta e seleção de exercícios do catálogo compartilhado (somente leitura para o fisioterapeuta; cadastro feito pelo administrador) |
-| **Anexos** | Upload e listagem de exames, laudos e outros documentos do paciente |
-| **Prontuário** | Visualização do prontuário gerado (PDF) com opção de download |
+| **Cadastro / Login** | Cadastro e autenticação do médico |
+| **Dashboard** | Lista de pacientes e acesso rápido às sessões recentes |
+| **Paciente** | Dados, ficha inicial, plano, histórico de sessões, anexos e geração do prontuário |
+| **Ficha Inicial** | Queixa principal, histórico clínico e diagnóstico |
+| **Plano de Tratamento** | Objetivos, frequência, sessões previstas e previsão de alta |
+| **Sessão** | Seleção de exercícios, comentário por exercício e observação geral |
+| **Banco de Exercícios** | Consulta do catálogo (somente leitura para o fisioterapeuta) |
+| **Anexos** | Upload e listagem de documentos do paciente |
+| **Prontuário** | Visualização e download do PDF gerado |
 
 ---
 
@@ -137,47 +134,45 @@ actor "Profissional\nda Saúde" as prof
 ' ── Sistema ───────────────────────────────────
 rectangle Sistema {
 
-  ' ─── Autenticação ───
-  package "Autenticação" {
-    usecase "Cadastrar-se /\nFazer Login" as UC0
+  ' ─── Coluna 1: cadastro e gestão ───
+  together {
+    package "Autenticação" {
+      usecase "Cadastrar-se /\nFazer Login" as UC0
+    }
+
+    package "Paciente" {
+      usecase "Gerenciar\nPaciente" as UC1
+    }
+
+    package "Ficha Inicial" {
+      usecase "Registrar\nFicha Inicial" as UC1a
+    }
+
+    package "Plano de Tratamento" {
+      usecase "Definir Plano\nde Tratamento" as UC1b
+    }
+
+    package "Anexos" {
+      usecase "Gerenciar\nAnexos" as UC1c
+    }
   }
 
-  ' ─── Paciente ───
-  package "Paciente" {
-    usecase "Gerenciar\nPaciente" as UC1
-  }
+  ' ─── Coluna 2: sessão, exercícios e prontuário ───
+  together {
+    package "Sessão" {
+      usecase "Conduzir\nSessão" as UC2
+      usecase "Selecionar Exercícios\ndo Banco" as UC2a
+      usecase "Comentar\nExercício" as UC2b
+    }
 
-  ' ─── Ficha Inicial ───
-  package "Ficha Inicial" {
-    usecase "Registrar\nFicha Inicial" as UC1a
-  }
+    package "Banco de Exercícios" {
+      usecase "Consultar Banco\nde Exercícios" as UC3
+    }
 
-  ' ─── Plano de Tratamento ───
-  package "Plano de Tratamento" {
-    usecase "Definir Plano\nde Tratamento" as UC1b
-  }
-
-  ' ─── Anexos ───
-  package "Anexos" {
-    usecase "Gerenciar\nAnexos" as UC1c
-  }
-
-  ' ─── Sessão ───
-  package "Sessão" {
-    usecase "Conduzir\nSessão" as UC2
-    usecase "Selecionar Exercícios\ndo Banco" as UC2a
-    usecase "Comentar\nExercício" as UC2b
-  }
-
-  ' ─── Banco de Exercícios ───
-  package "Banco de Exercícios" {
-    usecase "Consultar Banco\nde Exercícios" as UC3
-  }
-
-  ' ─── Prontuário ───
-  package "Prontuário" {
-    usecase "Gerar\nProntuário" as UC4
-    usecase "Consultar Sessões\ndo Paciente" as UC4a
+    package "Prontuário" {
+      usecase "Gerar\nProntuário" as UC4
+      usecase "Consultar Sessões\ndo Paciente" as UC4a
+    }
   }
 
 }
@@ -202,57 +197,50 @@ UC4 ..> UC4a : <<include>>
 
 ---
 
-## 6. Software / Plataforma
+## 6. Stack
 
-| Camada | Tecnologias |
+| Camada | Tecnologia |
 | :--- | :--- |
 | **Frontend** | React, HTML, CSS, JavaScript |
-| **Backend** | Python, FastAPI (API REST) |
+| **Backend** | Python, FastAPI |
 | **Banco de Dados** | PostgreSQL |
-| **Ferramentas** | Visual Studio Code, Git |
+| **Ferramentas** | VS Code, Git |
 
 ---
 
-## 7. Cronograma do Projeto
-
-As etapas devem ser seguidas na ordem abaixo:
+## 7. Cronograma
 
 **Etapa 1 — Análise e Documentação**
-* Levantamento de requisitos com a profissional
-* Definição dos módulos, telas e fluxos do sistema
-* Elaboração da User Story e Diagrama de Caso de Uso
-* Revisão e validação do documento base
+- Levantamento de requisitos
+- Definição de módulos, telas e fluxos
+- User Story e diagrama de casos de uso
+- Revisão e validação
 
 **Etapa 2 — Prototipação**
-* Criação dos wireframes das telas (Dashboard, Paciente, Sessão, Banco de Exercícios, Prontuário)
-* Validação do fluxo de navegação com a profissional
-* Ajustes no protótipo antes de iniciar o desenvolvimento
+- Wireframes das telas principais
+- Validação do fluxo de navegação
+- Ajustes antes do desenvolvimento
 
 **Etapa 3 — Modelagem do Banco de Dados**
-* Definição das entidades (Médico, Paciente, Paciente Anexo, Ficha Inicial, Plano de Tratamento, Exercício, Sessão, Sessão Exercício)
-* Prontuário gerado sob demanda (sem tabela no banco)
-* Criação do diagrama entidade-relacionamento (DER)
-* Criação das tabelas no PostgreSQL
-* Definição de índices para otimização de consultas
+- Definição das entidades e relacionamentos
+- Diagrama ER
+- Criação das tabelas no PostgreSQL e índices
 
-**Etapa 4 — Desenvolvimento do Backend**
-* Configuração do projeto FastAPI
-* Implementação dos endpoints de Paciente (cadastro, listagem, detalhes)
-* Implementação dos endpoints de Sessão (criar, adicionar exercícios, comentar, encerrar)
-* Implementação dos endpoints de Banco de Exercícios (listar, cadastrar)
-* Implementação da geração do Prontuário
+**Etapa 4 — Backend**
+- Configuração do projeto FastAPI
+- Endpoints de paciente, sessão, banco de exercícios e prontuário
 
-**Etapa 5 — Desenvolvimento do Frontend**
-* Configuração do projeto React
-* Implementação das telas na ordem: Dashboard → Paciente → Sessão → Banco de Exercícios → Prontuário
-* Integração com a API (FastAPI)
+**Etapa 5 — Frontend**
+- Configuração do projeto React
+- Implementação das telas: Dashboard → Paciente → Sessão → Banco de Exercícios → Prontuário
+- Integração com a API
 
 **Etapa 6 — Testes**
-* Testes dos fluxos principais (cadastrar paciente, conduzir sessão, gerar prontuário)
-* Correção de bugs encontrados
+- Testes dos fluxos principais
+- Correção de bugs
 
-**Etapa 7 — Entrega Final**
-* Revisão geral do sistema
-* Documentação final
-* Deploy ou entrega do projeto
+**Etapa 7 — Entrega**
+- Revisão geral
+- Documentação final
+- Deploy ou entrega do projeto
 
