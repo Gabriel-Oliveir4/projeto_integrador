@@ -4,21 +4,8 @@
 
 Aplicativo web para fisioterapeutas cadastrarem pacientes, conduzirem sessões com exercícios selecionados e comentados, e gerarem um prontuário em PDF sob demanda.
 
-O sistema tem as seguintes tabelas no banco de dados, mais o prontuário que é gerado sob demanda e não é armazenado:
-
-1. **Médico** — conta do profissional, usada para autenticação e vínculo com todos os dados.
-2. **Paciente** — dados cadastrais, vinculado ao médico.
-3. **Ficha Inicial** — queixa principal, histórico clínico e diagnóstico do paciente.
-4. **Plano de Tratamento** — objetivos terapêuticos, frequência semanal, sessões previstas e previsão de alta.
-5. **Sessão** — atendimento realizado, com exercícios selecionados e comentários por exercício.
-6. **Banco de Exercícios** — catálogo compartilhado entre todos os fisioterapeutas, gerenciado pelo administrador do sistema. Cada exercício tem nome, descrição e foto.
-7. **Anexos** — exames, laudos e outros documentos do paciente.
-8. **Prontuário** _(sem tabela)_ — relatório PDF gerado sob demanda, compilando ficha inicial + plano + sessões + exercícios + anexos.
-
 ---
 ---
-
-
 
 ## 2. User Story
 
@@ -80,7 +67,7 @@ O sistema tem as seguintes tabelas no banco de dados, mais o prontuário que é 
 | **Ficha Inicial** | Queixa principal, histórico clínico e diagnóstico |
 | **Plano de Tratamento** | Objetivos, frequência, sessões previstas e previsão de alta |
 | **Sessão** | Seleção de exercícios, comentário por exercício e observação geral |
-| **Banco de Exercícios** | Consulta do catálogo (somente leitura para o fisioterapeuta) |
+| **Banco de Exercícios** | Consulta do catálogo (somente leitura para o fisioterapeuta; cadastro e edição pelo administrador) |
 | **Anexos** | Upload e listagem de documentos do paciente |
 | **Prontuário** | Visualização e download do PDF gerado |
 
@@ -88,27 +75,11 @@ O sistema tem as seguintes tabelas no banco de dados, mais o prontuário que é 
 
 ## 5. Diagrama de Caso de Uso
 
-**Ator:** Profissional da saúde
-
-**Casos de uso e relações:**
-
-| Caso de Uso | Relação | Inclui |
-| :--- | :--- | :--- |
-| Cadastrar-se / Fazer Login | — | — |
-| Gerenciar Paciente | — | — |
-| Registrar Ficha Inicial | — | — |
-| Definir Plano de Tratamento | — | — |
-| Conduzir Sessão | `<<include>>` | Selecionar Exercícios do Banco |
-| Conduzir Sessão | `<<include>>` | Comentar Exercício |
-| Consultar Banco de Exercícios | — | — |
-| Gerenciar Anexos do Paciente | — | — |
-| Gerar Prontuário | `<<include>>` | Consultar Sessões do Paciente |
-
 **Diagrama (PlantUML):**
 
-//usar alt+d para exibir diagrama
+//alt+d abre diagrama
 ```plantuml
-@startuml
+@start tuml
 
 left to right direction
 skinparam packageStyle rectangle
@@ -128,13 +99,11 @@ skinparam usecase {
   FontColor #212529
 }
 
-' ── Ator ──────────────────────────────────────
 actor "Profissional\nda Saúde" as prof
+actor "Administrador" as admin
 
-' ── Sistema ───────────────────────────────────
 rectangle Sistema {
 
-  ' ─── Coluna 1: cadastro e gestão ───
   together {
     package "Autenticação" {
       usecase "Cadastrar-se /\nFazer Login" as UC0
@@ -157,7 +126,6 @@ rectangle Sistema {
     }
   }
 
-  ' ─── Coluna 2: sessão, exercícios e prontuário ───
   together {
     package "Sessão" {
       usecase "Conduzir\nSessão" as UC2
@@ -167,6 +135,7 @@ rectangle Sistema {
 
     package "Banco de Exercícios" {
       usecase "Consultar Banco\nde Exercícios" as UC3
+      usecase "Gerenciar Banco\nde Exercícios" as UC3a
     }
 
     package "Prontuário" {
@@ -177,17 +146,16 @@ rectangle Sistema {
 
 }
 
-' ── Relações: Ator → Casos de Uso ─────────────
-prof --> UC0
-prof --> UC1
-prof --> UC1a
-prof --> UC1b
-prof --> UC1c
-prof --> UC2
-prof --> UC3
-prof --> UC4
+prof  --> UC0
+prof  --> UC1
+prof  --> UC1a
+prof  --> UC1b
+prof  --> UC1c
+prof  --> UC2
+prof  --> UC3
+prof  --> UC4
+admin --> UC3a
 
-' ── Relações: <<include>> ─────────────────────
 UC2 ..> UC2a : <<include>>
 UC2 ..> UC2b : <<include>>
 UC4 ..> UC4a : <<include>>

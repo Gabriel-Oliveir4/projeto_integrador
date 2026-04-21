@@ -106,6 +106,29 @@ together {
     * exercicio_id : INT <<FK exercicio.id>>
     comentario : TEXT
     ordem : INT
+    * status : VARCHAR(20) [default 'realizado']
+    * removido : BOOLEAN [default false]
+  }
+
+  entity "plano_exercicio" as pe {
+    * id : SERIAL <<PK>>
+    --
+    * plano_tratamento_id : INT <<FK plano_tratamento.id>>
+    * exercicio_id : INT <<FK exercicio.id>>
+    ordem : INT
+  }
+
+  entity "agendamento" as age {
+    * id : SERIAL <<PK>>
+    --
+    * paciente_id : INT <<FK paciente.id>>
+    * medico_id : INT <<FK medico.id>>
+    * data_hora : TIMESTAMPTZ
+    * status : VARCHAR(20) [default 'agendado']
+    motivo_cancelamento : TEXT
+    cancelado_por : VARCHAR(10)
+    sessao_id : INT <<FK sessao.id>>
+    * criado_em : TIMESTAMPTZ [default NOW()]
   }
 
   entity "exercicio" as exe {
@@ -123,10 +146,15 @@ med    ||--o{ pac
 pac    ||--o{ anx
 pac    ||--o{ ses
 pac    ||--o{ ficha
+pac    ||--o{ age
+med    ||--o{ age
 ficha  ||--o{ plano
 plano  ||--o{ ses
+plano  ||--o{ pe
 ses    ||--o{ se
 exe    ||--o{ se
+exe    ||--o{ pe
+ses    |o--o| age : "origina"
 
 @enduml
 ```
@@ -265,17 +293,52 @@ Sessão/consulta de fisioterapia realizada com um paciente.
 
 ### 8. `sessao_exercicio`
 
-Tabela associativa: exercícios realizados em cada sessão, com comentário individual.
+Tabela associativa: exercícios realizados em cada sessão, com comentário e status individual.
 
 | Coluna | Tipo | Restrições | Descrição |
 |:---|:---|:---|:---|
 | id | SERIAL | PK | Identificador único |
 | sessao_id | INT | FK → sessao.id, NOT NULL | Sessão vinculada |
 | exercicio_id | INT | FK → exercicio.id, NOT NULL | Exercício realizado |
-| comentario | TEXT | NULL | Comentário sobre a execução (desempenho, observações) |
+| comentario | TEXT | NULL | Comentário sobre a execução |
 | ordem | INT | NULL | Ordem do exercício na sessão |
+| status | VARCHAR(20) | DEFAULT 'realizado' | Como foi a execução: `realizado`, `nao_realizado`, `adaptado`, `superado` |
+| removido | BOOLEAN | DEFAULT false | Soft delete — exercício retirado da sessão sem perder o registro |
 
 > **Constraint:** `UNIQUE(sessao_id, exercicio_id)` — impede exercício duplicado na mesma sessão.
+
+---
+
+### 9. `plano_exercicio`
+
+Bateria padrão de exercícios do plano de tratamento. Ao iniciar uma sessão, o sistema copia esses registros para `sessao_exercicio` automaticamente.
+
+| Coluna | Tipo | Restrições | Descrição |
+|:---|:---|:---|:---|
+| id | SERIAL | PK | Identificador único |
+| plano_tratamento_id | INT | FK → plano_tratamento.id, NOT NULL | Plano de tratamento vinculado |
+| exercicio_id | INT | FK → exercicio.id, NOT NULL | Exercício da bateria |
+| ordem | INT | NULL | Ordem sugerida na sessão |
+
+> **Constraint:** `UNIQUE(plano_tratamento_id, exercicio_id)` — impede exercício duplicado no mesmo plano.
+
+---
+
+### 10. `agendamento`
+
+Agendamento de consultas. Registra data/hora prevista, status e, quando realizado, vínculo com a sessão gerada.
+
+| Coluna | Tipo | Restrições | Descrição |
+|:---|:---|:---|:---|
+| id | SERIAL | PK | Identificador único |
+| paciente_id | INT | FK → paciente.id, NOT NULL | Paciente agendado |
+| medico_id | INT | FK → medico.id, NOT NULL | Médico responsável |
+| data_hora | TIMESTAMPTZ | NOT NULL | Data e hora da consulta |
+| status | VARCHAR(20) | DEFAULT 'agendado' | `agendado`, `realizado`, `cancelado`, `nao_compareceu` |
+| motivo_cancelamento | TEXT | NULL | Preenchido quando cancelado ou não compareceu |
+| cancelado_por | VARCHAR(10) | NULL | Quem cancelou: `medico` ou `paciente` |
+| sessao_id | INT | FK → sessao.id, NULL | Sessão gerada quando o agendamento foi realizado |
+| criado_em | TIMESTAMPTZ | DEFAULT NOW() | Data de criação |
 
 ---
 
@@ -297,13 +360,18 @@ O backend monta o documento em tempo real e exporta como **PDF**. Como todas as 
 
 ```
 medico 1 ──── N paciente
+medico 1 ──── N agendamento
 paciente 1 ──── N paciente_anexo
 paciente 1 ──── N ficha_inicial
-paciente 1 ──── N sessao            (desnormalizado para performance)
+paciente 1 ──── N sessao
+paciente 1 ──── N agendamento
 ficha_inicial 1 ──── N plano_tratamento
 plano_tratamento 1 ──── N sessao
+plano_tratamento 1 ──── N plano_exercicio
 sessao 1 ──── N sessao_exercicio
 exercicio 1 ──── N sessao_exercicio
+exercicio 1 ──── N plano_exercicio
+agendamento 0..1 ──── 1 sessao
 ```
 
 ---
@@ -336,6 +404,11 @@ Para otimizar as consultas mais frequentes do sistema.
 | `sessao` | `status` | B-tree | Filtrar sessões por status |
 | `sessao_exercicio` | `sessao_id` | Hash | Exercícios de uma sessão específica |
 | `sessao_exercicio` | `(sessao_id, exercicio_id)` | UNIQUE / Hash | Impedir exercício duplicado na sessão |
+| `plano_exercicio` | `plano_tratamento_id` | Hash | Bateria padrão ao iniciar sessão |
+| `plano_exercicio` | `(plano_tratamento_id, exercicio_id)` | UNIQUE / Hash | Impedir exercício duplicado no plano |
+| `agendamento` | `(medico_id, data_hora)` | B-tree composto | Agenda do médico por data |
+| `agendamento` | `(paciente_id, data_hora)` | B-tree composto | Histórico de agendamentos do paciente |
+| `agendamento` | `status` | B-tree | Filtrar por status |
 | `exercicio` | `nome` | B-tree | Busca no banco de exercícios por nome |
 
 ---
@@ -350,6 +423,14 @@ CREATE INDEX idx_ficha_paciente_hash       ON ficha_inicial (paciente_id)       
 CREATE INDEX idx_plano_ficha_hash          ON plano_tratamento (ficha_inicial_id) USING HASH;
 CREATE INDEX idx_sessao_plano_hash         ON sessao (plano_tratamento_id)       USING HASH;
 CREATE INDEX idx_sessao_exercicio_hash     ON sessao_exercicio (sessao_id)       USING HASH;
+
+-- plano_exercicio
+CREATE INDEX idx_plano_exercicio_hash      ON plano_exercicio (plano_tratamento_id) USING HASH;
+
+-- agendamento
+CREATE INDEX idx_agendamento_medico_data   ON agendamento (medico_id, data_hora);
+CREATE INDEX idx_agendamento_paciente_data ON agendamento (paciente_id, data_hora);
+CREATE INDEX idx_agendamento_status        ON agendamento (status);
 
 -- B-tree (listagens, ranges, ordenação)
 CREATE INDEX idx_paciente_medico_btree     ON paciente (medico_id);
