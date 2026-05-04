@@ -79,7 +79,7 @@ Aplicativo web para fisioterapeutas cadastrarem pacientes, conduzirem sessões c
 
 //alt+d abre diagrama
 ```plantuml
-@start tuml
+@startuml
 
 left to right direction
 skinparam packageStyle rectangle

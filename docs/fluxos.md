@@ -27,148 +27,149 @@ Dashboard → "Novo paciente"
 
 ---
 
-## 3. Registrar Ficha Inicial
+## 3. Criar Episódio de Tratamento
 
 ```
-Página do paciente → "Nova ficha inicial"
-  └─ Preencher (queixa principal, histórico clínico, diagnóstico, observações)
-       └─ Salvar → Ficha vinculada ao paciente
+Página do paciente → Aba "Episódio"
+  └─ Criar nova ficha de tratamento
+       ├─ Preencher queixa principal, histórico clínico, diagnóstico
+       ├─ Definir objetivos, frequência semanal, sessões previstas
+       ├─ Informar data de início e previsão de alta
+       └─ Salvar → Episódio criado com status "ativo"
 ```
 
-> Um paciente pode ter mais de uma ficha ao longo do tempo (alta e retorno).
+> Cada paciente pode ter vários episódios ao longo do tempo, mas apenas um episódio está ativo de cada vez.
 
 ---
 
-## 4. Definir Plano de Tratamento
+## 4. Interface por Abas do Paciente
 
-```
-Página do paciente → "Novo plano de tratamento"
-  └─ Selecionar ficha inicial de referência
-       └─ Preencher (objetivos, frequência semanal, sessões previstas, data de início, previsão de alta)
-            └─ Adicionar bateria padrão de exercícios (plano_exercicio)
-                 └─ Buscar exercício no catálogo → Adicionar → Definir ordem
-                      └─ Salvar plano → Plano marcado como ativo
-```
+A página do paciente é organizada em abas principais:
 
-> Ao criar novo plano, o anterior é automaticamente marcado como inativo.
+- **Dados**: informações pessoais do paciente.
+- **Episódio**: ficha de tratamento ativa e exercícios previstos.
+- **Sessões**: agenda e registro de sessões.
+- **Anexos**: exames, laudos e documentos relacionados ao episódio.
+- **Prontuário**: geração de relatório PDF sob demanda.
 
----
+### 4.1 Stepper da sessão
 
-## 5. Agendamento
+Na aba "Sessões", cada sessão é conduzida por um stepper de três etapas:
 
-```
-Agenda / Página do paciente → "Novo agendamento"
-  └─ Selecionar paciente (se vindo da agenda)
-       └─ Informar data e hora
-            └─ Salvar → Agendamento com status "agendado"
-
-No dia da consulta:
-  ├─ Paciente compareceu → Iniciar sessão (fluxo 6) → Agendamento muda para "realizado"
-  ├─ Paciente não compareceu → Registrar como "nao_compareceu" + motivo opcional
-  └─ Cancelado → Registrar como "cancelado" + quem cancelou + motivo
-```
+1. **Preparar**
+   - revisar dados do paciente e do episódio ativo
+   - confirmar a lista padrão de exercícios do episódio
+   - iniciar ou criar a sessão agendada
+2. **Executar**
+   - copiar exercícios de `ficha_exercicio` para `sessao_exercicio`
+   - marcar cada exercício com status e comentário
+   - adaptar, adicionar ou remover exercícios se necessário
+3. **Encerrar**
+   - preencher observação geral da sessão
+   - finalizar a sessão
 
 ---
 
-## 6. Conduzir Sessão
+## 5. Gerenciar Sessões
 
 ```
-Agendamento "agendado" → "Iniciar sessão"
-  └─ Sistema copia bateria padrão do plano ativo para a sessão (plano_exercicio → sessao_exercicio)
-       └─ Tela da sessão exibe lista de exercícios
-            └─ Para cada exercício:
-                 ├─ Marcar status: [Normal] [Adaptado] [Não realizado] [Superado]
-                 └─ Preencher comentário (opcional)
+Aba "Sessões" → "Nova sessão"
+  └─ Definir data e hora
+       └─ Salvar → Sessão criada com status "agendado"
 
-  ├─ Precisa adaptar a sessão?
-  │    └─ Botão "Editar sessão"
-  │         ├─ Adicionar exercício do catálogo
-  │         └─ Remover exercício (soft delete — registro preservado)
-
-  └─ Encerrar sessão
-        └─ Preencher observação geral (opcional)
-             └─ Confirmar → Sessão muda para "finalizada"
-                  └─ Agendamento vinculado muda para "realizado"
+No dia da sessão:
+  ├─ Iniciar sessão → status muda para "em_andamento"
+  ├─ Preencher exercícios da sessão
+  │    ├─ status por exercício: realizado / adaptado / nao_realizado / superado
+  │    └─ comentário por exercício
+  ├─ Encerrar sessão → preencher observação geral
+  └─ Finalizar → status muda para "realizada"
 ```
+
+Se o paciente não comparecer ou a sessão for cancelada:
+
+- registrar a sessão como `nao_compareceu` ou `cancelada`
+- preservar o histórico da sessão
+
+> A sessão já representa o agendamento. Não há tabela separada de `agendamento` no modelo atual.
 
 ---
 
-## 7. Editar Plano de Tratamento (bateria padrão)
+## 6. Exercícios do Episódio
 
 ```
-Página do paciente → Plano ativo → "Editar plano"
-  ├─ Alterar campos (objetivos, frequência, etc.)
-  ├─ Adicionar exercício à bateria padrão
-  └─ Remover exercício da bateria padrão
-       └─ Salvar → Próximas sessões herdam a nova bateria
-                   Sessões anteriores não são afetadas
+Aba "Episódio" → "Exercícios previstos"
+  └─ Buscar exercício no catálogo
+       └─ Adicionar à ficha de tratamento
+            ├─ Definir ordem
+            └─ Salvar → exercício registrado em `ficha_exercicio`
 ```
+
+Os exercícios previstos no episódio servem de base para as sessões. Ao iniciar uma sessão, a carga padrão é copiada para `sessao_exercicio`.
 
 ---
 
-## 8. Gerenciar Anexos
+## 7. Gerenciar Anexos
 
 ```
-Página do paciente → Aba "Anexos" → "Novo anexo"
-  └─ Upload do arquivo (exame, laudo, etc.)
+Aba "Anexos" → "Novo anexo"
+  └─ Selecionar arquivo
        └─ Preencher anotação (opcional)
-            └─ Salvar → Anexo listado na página do paciente
+            └─ Salvar → Anexo vinculado ao episódio de tratamento
 ```
 
 ---
 
-## 9. Gerar Prontuário
+## 8. Gerar Prontuário
 
 ```
-Página do paciente → "Gerar prontuário"
-  └─ Backend compila em tempo real:
-       ├─ Dados do paciente
-       ├─ Ficha(s) inicial(is)
-       ├─ Plano(s) de tratamento
-       ├─ Sessões realizadas + exercícios + comentários
-       └─ Anexos
-            └─ Gerar PDF → Exibir visualização → Opção de download
+Aba "Prontuário" → "Gerar prontuário"
+  └─ Backend compila:
+       ├─ dados do paciente
+       ├─ ficha de tratamento ativa
+       ├─ sessões realizadas com exercícios e comentários
+       └─ anexos
+            └─ Gerar PDF → Exibir visualização → Download
 ```
 
-> O prontuário não é salvo no banco. Cada geração compila os dados atuais.
+> O prontuário é gerado sob demanda e não fica armazenado como entidade separada.
 
 ---
 
-## 10. Gerenciar Banco de Exercícios (Administrador)
+## 9. Novo ciclo de tratamento
 
 ```
-Login como administrador → Banco de Exercícios
-  ├─ Listar exercícios (ativos e inativos)
-  ├─ Novo exercício → Nome, descrição, foto → Salvar
-  ├─ Editar exercício existente
-  └─ Ativar / desativar exercício
+Paciente com episódio ativo → Encerrar episódio atual
+  └─ Atualizar `ficha_tratamento.status` para "concluido" ou "cancelado"
+       └─ Criar novo episódio de tratamento
+            └─ Novo episódio passa a ser o ativo
 ```
-
-> Fisioterapeutas não têm acesso a esta área — apenas leitura do catálogo durante as sessões.
 
 ---
 
-## Resumo dos status por tabela
+## 10. Resumo de status
+
+### `ficha_tratamento.status`
+| Valor | Descrição |
+|:---|:---|
+| `ativo` | Episódio vigente de tratamento |
+| `concluido` | Episódio finalizado |
+| `cancelado` | Episódio cancelado |
 
 ### `sessao.status`
 | Valor | Descrição |
 |:---|:---|
-| `em_andamento` | Sessão iniciada, ainda sendo conduzida |
-| `finalizada` | Sessão encerrada pelo médico |
+| `agendado` | Sessão criada e aguardando data/hora |
+| `em_andamento` | Sessão iniciada |
+| `realizada` | Sessão concluída |
 | `cancelada` | Sessão cancelada |
+| `nao_compareceu` | Paciente não compareceu |
 
 ### `sessao_exercicio.status`
-| Valor | Interface |
-|:---|:---|
-| `realizado` | ✓ Normal |
-| `adaptado` | ~ Realizado com adaptação |
-| `nao_realizado` | ✗ Não realizado |
-| `superado` | ★ Superado |
-
-### `agendamento.status`
 | Valor | Descrição |
 |:---|:---|
-| `agendado` | Consulta marcada, ainda não ocorreu |
-| `realizado` | Paciente compareceu e sessão foi conduzida |
-| `cancelado` | Cancelado pelo médico ou paciente |
-| `nao_compareceu` | Paciente não apareceu |
+| `realizado` | Exercício feito normalmente |
+| `adaptado` | Exercício feito com adaptação |
+| `nao_realizado` | Exercício não foi feito |
+| `superado` | Exercício superado pelo paciente |
+''
