@@ -18,6 +18,7 @@ async function connectDB() {
     //se ja tiver conexão, usa ela, se não, cria uma nova conexão
   if (cached.conn) return cached.conn;
   if (!cached.promise) {
+    console.log("TENTANDO CONECTAR:", MONGODB_URI);
     cached.promise = mongoose.connect(MONGODB_URI);
   }
 

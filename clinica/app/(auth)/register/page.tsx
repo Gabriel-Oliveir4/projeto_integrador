@@ -22,8 +22,7 @@ export default function RegisterPage() {
     setForm({ ...form, [e.target.name]: e.target.value });
   }
 
-  async function handleRegister(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleRegister() {
     setErro("");
 
     if (form.senha !== form.confirmarSenha) {
@@ -62,7 +61,7 @@ export default function RegisterPage() {
           <CardDescription>Preencha os dados para se cadastrar</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleRegister} className="space-y-4">
+          <form className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="nome">Nome</Label>
@@ -140,7 +139,7 @@ export default function RegisterPage() {
 
             {erro && <p className="text-sm text-red-500">{erro}</p>}
 
-            <Button type="submit" className="w-full" disabled={carregando}>
+            <Button type="button" onClick={handleRegister} className="w-full" disabled={carregando}>
               {carregando ? "Cadastrando..." : "Criar conta"}
             </Button>
 

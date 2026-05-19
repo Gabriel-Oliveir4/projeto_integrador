@@ -55,6 +55,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ erro: "Ação inválida" }, { status: 400 });
 
   } catch (error) {
+    console.error(error);
     return NextResponse.json({ erro: "Erro interno do servidor" }, { status: 500 });
   }
 }
