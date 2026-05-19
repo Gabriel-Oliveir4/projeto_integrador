@@ -12,8 +12,7 @@ export default function LoginPage() {
   const [erro, setErro] = useState("");
   const [carregando, setCarregando] = useState(false);
 
-  async function handleLogin(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleLogin() {
     setErro("");
     setCarregando(true);
 
@@ -31,7 +30,8 @@ export default function LoginPage() {
         return;
       }
 
-      localStorage.setItem("token", data.token);
+      // Salva o token em cookie para o middleware conseguir verificar
+      document.cookie = `token=${data.token}; path=/; max-age=${7 * 24 * 60 * 60}`;
       window.location.href = "/dashboard";
     } finally {
       setCarregando(false);
@@ -46,7 +46,7 @@ export default function LoginPage() {
           <CardDescription>Acesse sua conta para continuar</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
+          <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">E-mail</Label>
               <Input
@@ -55,7 +55,6 @@ export default function LoginPage() {
                 placeholder="seu@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                required
               />
             </div>
             <div className="space-y-2">
@@ -66,13 +65,12 @@ export default function LoginPage() {
                 placeholder="••••••••"
                 value={senha}
                 onChange={(e) => setSenha(e.target.value)}
-                required
               />
             </div>
 
             {erro && <p className="text-sm text-red-500">{erro}</p>}
 
-            <Button type="submit" className="w-full" disabled={carregando}>
+            <Button className="w-full" onClick={handleLogin} disabled={carregando}>
               {carregando ? "Entrando..." : "Entrar"}
             </Button>
 
@@ -82,7 +80,7 @@ export default function LoginPage() {
                 Cadastre-se
               </a>
             </p>
-          </form>
+          </div>
         </CardContent>
       </Card>
     </div>
