@@ -1,6 +1,7 @@
 import mongoose, {Schema, Document, Types} from "mongoose"; 
 
 export interface IPaciente extends Document {
+    fisio: Types.ObjectId; 
     nome: string;
     sobrenome: string;
     dataNascimento?: Date;
