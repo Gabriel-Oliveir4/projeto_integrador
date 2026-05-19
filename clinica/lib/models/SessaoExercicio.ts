@@ -1,14 +1,14 @@
 import mongoose, {Schema, Document, Types} from "mongoose";
 
 export interface ISessaoExercicio extends Document {
-    planoexercicio: Types.ObjectId;
+    exercicio: Types.ObjectId;
     sessao: Types.ObjectId;
     status: "realizado" | "adaptado" | "nao_realizado" | "superado";
     comentario?: string;
 }
 
 const SessaoExercicioSchema: Schema = new Schema<ISessaoExercicio>({
-    planoexercicio: {type: Schema.Types.ObjectId, ref: "PlanoExercicio", required: true},
+    exercicio: {type: Schema.Types.ObjectId, ref: "Exercicio", required: true},
     sessao: {type: Schema.Types.ObjectId, ref: "Sessao", required: true},
     status: {type: String, enum: ["realizado", "adaptado", "nao_realizado", "superado"], default: "realizado"},
     comentario: {type: String}

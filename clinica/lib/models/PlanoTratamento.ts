@@ -5,7 +5,7 @@ export interface IPlanoTratamento extends Document {
     queixa: string;
     historico?: string;
     diagnostico?: string;
-    obejetivo?: string;
+    objetivo?: string;
     frequenciaSemanal?: number;
     sessoesPrevistas?: number;
     dataInicio?: Date;
@@ -18,7 +18,7 @@ const PlanoTratamentoSchema = new Schema<IPlanoTratamento>({
     queixa: { type: String, required: true },
     historico: { type: String },
     diagnostico: { type: String },
-    obejetivo: { type: String },
+    objetivo: { type: String },
     frequenciaSemanal: { type: Number },
     sessoesPrevistas: { type: Number },
     dataInicio: { type: Date },
