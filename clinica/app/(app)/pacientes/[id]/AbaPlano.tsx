@@ -161,7 +161,7 @@ export default function AbaPlano({ pacienteId }: { pacienteId: string }) {
         <h2 className="text-lg font-medium text-slate-800">Plano de Tratamento</h2>
 
         <Dialog open={modalAberto} onOpenChange={setModalAberto}>
-          <DialogTrigger asChild>
+          <DialogTrigger>
             <Button onClick={abrirNovo}>
               <Plus size={16} className="mr-2" />
               Novo plano
