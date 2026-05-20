@@ -4,6 +4,7 @@ import { useState, useEffect, use } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getToken } from "@/lib/utils/token";
 import AbaPlano from "./AbaPlano";
+import AbaSessoes from "./AbaSessoes";
 
 interface Paciente {
   _id: string;
@@ -84,7 +85,7 @@ export default function PacientePage({ params }: { params: Promise<{ id: string 
         </TabsContent>
 
         <TabsContent value="sessoes" className="mt-4">
-          <p className="text-slate-400 text-sm">Em breve...</p>
+          <AbaSessoes pacienteId={id} />
         </TabsContent>
 
         <TabsContent value="anexos" className="mt-4">

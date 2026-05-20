@@ -15,6 +15,12 @@ interface Exercicio {
   descricao: string;
 }
 
+interface PlanoExercicioItem {
+  _id: string;
+  exercicio: Exercicio;
+  ordem: number;
+}
+
 interface PlanoTratamento {
   _id: string;
   queixa: string;
@@ -25,7 +31,7 @@ interface PlanoTratamento {
   sessoesPrevistas?: number;
   dataInicio?: string;
   previsaoAlta?: string;
-  exercicios?: Exercicio[];
+  exercicios?: PlanoExercicioItem[];
   status: string;
 }
 
@@ -101,7 +107,7 @@ export default function AbaPlano({ pacienteId }: { pacienteId: string }) {
         body: JSON.stringify({
           ...form,
           paciente: pacienteId,
-          exercicios: exerciciosSelecionados,
+          exerciciosIds: exerciciosSelecionados,
         }),
       });
 
@@ -254,14 +260,14 @@ export default function AbaPlano({ pacienteId }: { pacienteId: string }) {
             <div className="col-span-2">
               <p className="text-slate-400">Exercícios prescritos</p>
               {planoAtivo.exercicios && planoAtivo.exercicios.length > 0 ? (
-                <ul className="list-disc pl-5 space-y-1 mt-1">
-                  {planoAtivo.exercicios.map((ex) => (
-                    <li key={ex._id}>
-                      <span className="font-medium">{ex.nome}</span>
-                      <span className="text-slate-500"> — {ex.descricao}</span>
+                <ol className="list-decimal pl-5 space-y-1 mt-1">
+                  {planoAtivo.exercicios.map((item) => (
+                    <li key={item._id}>
+                      <span className="font-medium">{item.exercicio.nome}</span>
+                      <span className="text-slate-500"> — {item.exercicio.descricao}</span>
                     </li>
                   ))}
-                </ul>
+                </ol>
               ) : (
                 <p className="font-medium">—</p>
               )}
