@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import PlanoTratamento from "@/lib/models/PlanoTratamento";
+import "@/lib/models/Exercicio";
 import { apiHandler } from "@/lib/apiHandler";
 
 // Buscar plano por ID

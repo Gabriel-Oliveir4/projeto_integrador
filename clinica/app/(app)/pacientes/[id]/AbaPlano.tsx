@@ -60,9 +60,11 @@ export default function AbaPlano({ pacienteId }: { pacienteId: string }) {
     const res = await fetch(`/api/planoTratamento?pacienteId=${pacienteId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
+    
     const data = await res.json();
-    setPlanos(data);
-    setPlanoAtivo(data.find((p: PlanoTratamento) => p.status === "ativo") || null);
+    const lista = Array.isArray(data) ? data : [];
+    setPlanos(lista);
+    setPlanoAtivo(lista.find((p: PlanoTratamento) => p.status === "ativo") || null);
   }
 
   async function buscarExercicios() {
