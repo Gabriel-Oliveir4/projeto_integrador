@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import dbConnect from "@/lib/dbConnect";
+import dbConnect from "@/lib/mongodb";
 import Sessao from "@/lib/models/sessao";
 
 // Chamado pelo cron da Vercel (vercel.json) ou por qualquer scheduler externo.
