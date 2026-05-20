@@ -29,8 +29,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [sidebarAberta, setSidebarAberta] = useState(true);
   const pathname = usePathname();
 
-  function handleLogout() {
-    localStorage.removeItem("token");
+  async function handleLogout() {
+    await fetch("/api/auth", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ acao: "logout" }),
+    });
     window.location.href = "/login";
   }
 

@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus } from "lucide-react";
-import { getToken } from "@/lib/utils/token";
+import { mascaraCelular, celularValido } from "@/lib/utils/mascaras";
+import { CampoErro } from "@/components/ui/campo-erro";
 
 interface Paciente {
   _id: string;
@@ -37,31 +38,44 @@ export default function PacientesPage() {
     buscarPacientes();
   }, []);
 
+  const [erros, setErros] = useState<Record<string, string>>({});
+
   async function buscarPacientes() {
-    const token = getToken();
-    const res = await fetch("/api/pacientes", {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const res = await fetch("/api/pacientes", { credentials: "include" });
     const data = await res.json();
-    setPacientes(data);
+    setPacientes(Array.isArray(data) ? data : []);
   }
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    const novo = name === "celular" ? mascaraCelular(value) : value;
+    setForm({ ...form, [name]: novo });
+    if (erros[name]) setErros({ ...erros, [name]: "" });
+  }
+
+  function validar(): boolean {
+    const e: Record<string, string> = {};
+    if (!form.nome.trim()) e.nome = "Campo obrigatório";
+    if (!form.sobrenome.trim()) e.sobrenome = "Campo obrigatório";
+    if (form.dataNascimento) {
+      const d = new Date(form.dataNascimento);
+      if (d > new Date()) e.dataNascimento = "Data não pode ser no futuro";
+    }
+    if (form.celular && !celularValido(form.celular)) e.celular = "Celular inválido";
+    setErros(e);
+    return Object.keys(e).length === 0;
   }
 
   async function handleCadastrar() {
     setErro("");
+    if (!validar()) return;
     setCarregando(true);
 
     try {
-      const token = getToken();
       const res = await fetch("/api/pacientes", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(form),
       });
 
@@ -74,6 +88,7 @@ export default function PacientesPage() {
 
       setModalAberto(false);
       setForm(formInicial);
+      setErros({});
       buscarPacientes();
     } finally {
       setCarregando(false);
@@ -100,12 +115,14 @@ export default function PacientesPage() {
             <div className="space-y-4 mt-2">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Nome</Label>
+                  <Label>Nome <span className="text-red-500">*</span></Label>
                   <Input name="nome" value={form.nome} onChange={handleChange} placeholder="João" />
+                  <CampoErro msg={erros.nome} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Sobrenome</Label>
+                  <Label>Sobrenome <span className="text-red-500">*</span></Label>
                   <Input name="sobrenome" value={form.sobrenome} onChange={handleChange} placeholder="Silva" />
+                  <CampoErro msg={erros.sobrenome} />
                 </div>
               </div>
 
@@ -113,6 +130,7 @@ export default function PacientesPage() {
                 <div className="space-y-2">
                   <Label>Data de nascimento</Label>
                   <Input name="dataNascimento" type="date" value={form.dataNascimento} onChange={handleChange} />
+                  <CampoErro msg={erros.dataNascimento} />
                 </div>
                 <div className="space-y-2">
                   <Label>Sexo</Label>
@@ -132,7 +150,8 @@ export default function PacientesPage() {
 
               <div className="space-y-2">
                 <Label>Celular</Label>
-                <Input name="celular" value={form.celular} onChange={handleChange} placeholder="(00) 00000-0000" />
+                <Input name="celular" value={form.celular} onChange={handleChange} placeholder="(00) 00000-0000" inputMode="numeric" />
+                <CampoErro msg={erros.celular} />
               </div>
 
               <div className="space-y-2">

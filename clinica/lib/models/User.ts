@@ -1,4 +1,4 @@
-import mongoose, {Schema, Document, Types} from "mongoose";
+import mongoose, {Schema, Document} from "mongoose";
 
 export interface IUser extends Document {
     nome: string;
@@ -11,8 +11,8 @@ export interface IUser extends Document {
 const UserSchema: Schema = new Schema({
     nome: {type: String, required: true, trim: true },
     sobrenome: {type: String, required: true, trim: true },
-    email: {type: String, required: true, unique: true, trim: true },
-    senha: {type: String, required: true },
+    email: {type: String, required: true, unique: true, trim: true, lowercase: true },
+    senha: {type: String, required: true, select: false },
     celular: {type: String}
 });
 

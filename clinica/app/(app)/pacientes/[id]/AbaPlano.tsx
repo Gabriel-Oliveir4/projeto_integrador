@@ -7,7 +7,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Plus } from "lucide-react";
-import { getToken } from "@/lib/utils/token";
 
 interface Exercicio {
   _id: string;
@@ -62,11 +61,9 @@ export default function AbaPlano({ pacienteId }: { pacienteId: string }) {
   }, []);
 
   async function buscarPlanos() {
-    const token = getToken();
     const res = await fetch(`/api/planoTratamento?pacienteId=${pacienteId}`, {
-      headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
     });
-    
     const data = await res.json();
     const lista = Array.isArray(data) ? data : [];
     setPlanos(lista);
@@ -74,10 +71,7 @@ export default function AbaPlano({ pacienteId }: { pacienteId: string }) {
   }
 
   async function buscarExercicios() {
-    const token = getToken();
-    const res = await fetch("/api/exercicios", {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const res = await fetch("/api/exercicios", { credentials: "include" });
     const data = await res.json();
     setExercicios(Array.isArray(data) ? data : []);
   }
@@ -94,16 +88,21 @@ export default function AbaPlano({ pacienteId }: { pacienteId: string }) {
 
   async function handleCadastrar() {
     setErro("");
+    if (!form.queixa.trim()) {
+      setErro("Queixa principal é obrigatória.");
+      return;
+    }
+    if (form.dataInicio && form.previsaoAlta && form.previsaoAlta < form.dataInicio) {
+      setErro("Previsão de alta deve ser igual ou após a data de início.");
+      return;
+    }
     setCarregando(true);
 
     try {
-      const token = getToken();
       const res = await fetch("/api/planoTratamento", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           ...form,
           paciente: pacienteId,

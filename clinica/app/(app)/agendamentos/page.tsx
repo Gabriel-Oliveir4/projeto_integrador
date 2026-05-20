@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getToken } from "@/lib/utils/token";
 
 interface Paciente {
   _id: string;
@@ -60,9 +59,8 @@ export default function AgendamentosPage() {
     try {
       const de = new Date(cursor.getFullYear(), cursor.getMonth(), 1).toISOString();
       const ate = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0, 23, 59, 59).toISOString();
-      const token = getToken();
       const res = await fetch(`/api/sessoes?de=${de}&ate=${ate}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: "include",
       });
       const data = await res.json();
       setSessoes(Array.isArray(data) ? data : []);
@@ -93,10 +91,10 @@ export default function AgendamentosPage() {
   }
 
   async function iniciarSessao(s: Sessao) {
-    const token = getToken();
     const res = await fetch(`/api/sessoes/${s._id}`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
       body: JSON.stringify({ status: "em_andamento" }),
     });
     if (res.ok) {

@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { getToken } from "@/lib/utils/token";
 
 interface Exercicio {
   _id: string;
@@ -51,10 +50,7 @@ export default function DetalheSessao({ sessaoId, onAtualizar }: { sessaoId: str
   }, [sessaoId]);
 
   async function buscar() {
-    const token = getToken();
-    const res = await fetch(`/api/sessoes/${sessaoId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const res = await fetch(`/api/sessoes/${sessaoId}`, { credentials: "include" });
     const data = await res.json();
     if (!res.ok) return;
     setSessao(data.sessao);
@@ -63,10 +59,10 @@ export default function DetalheSessao({ sessaoId, onAtualizar }: { sessaoId: str
   }
 
   async function atualizarSessao(campos: Partial<Sessao>) {
-    const token = getToken();
     await fetch(`/api/sessoes/${sessaoId}`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
       body: JSON.stringify(campos),
     });
     await buscar();
@@ -76,10 +72,10 @@ export default function DetalheSessao({ sessaoId, onAtualizar }: { sessaoId: str
   async function salvarExercicio(item: SessaoExercicio) {
     setSalvandoIds((prev) => [...prev, item._id]);
     try {
-      const token = getToken();
       await fetch(`/api/sessoes/${sessaoId}/exercicios/${item._id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ status: item.status, comentario: item.comentario }),
       });
     } finally {

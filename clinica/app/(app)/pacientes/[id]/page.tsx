@@ -2,7 +2,6 @@
 
 import { useState, useEffect, use } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getToken } from "@/lib/utils/token";
 import AbaPlano from "./AbaPlano";
 import AbaSessoes from "./AbaSessoes";
 
@@ -23,10 +22,7 @@ export default function PacientePage({ params }: { params: Promise<{ id: string 
 
   useEffect(() => {
     async function buscar() {
-      const token = getToken();
-      const res = await fetch(`/api/pacientes/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await fetch(`/api/pacientes/${id}`, { credentials: "include" });
       const data = await res.json();
       setPaciente(data);
     }

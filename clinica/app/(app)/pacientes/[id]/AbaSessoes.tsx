@@ -8,7 +8,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Plus, ChevronRight } from "lucide-react";
-import { getToken } from "@/lib/utils/token";
 
 interface Sessao {
   _id: string;
@@ -45,9 +44,8 @@ export default function AbaSessoes({ pacienteId }: { pacienteId: string }) {
   }, []);
 
   async function buscarPlano() {
-    const token = getToken();
     const res = await fetch(`/api/planoTratamento?pacienteId=${pacienteId}`, {
-      headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
     });
     const lista = await res.json();
     if (!Array.isArray(lista)) return;
@@ -56,9 +54,8 @@ export default function AbaSessoes({ pacienteId }: { pacienteId: string }) {
   }
 
   async function buscarSessoes() {
-    const token = getToken();
     const res = await fetch(`/api/sessoes?pacienteId=${pacienteId}`, {
-      headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
     });
     const data = await res.json();
     setSessoes(Array.isArray(data) ? data : []);
@@ -74,12 +71,16 @@ export default function AbaSessoes({ pacienteId }: { pacienteId: string }) {
       setErro("Informe a data da sessão.");
       return;
     }
+    if (new Date(data).getTime() < Date.now() - 60_000) {
+      setErro("A data da sessão deve ser no futuro.");
+      return;
+    }
     setCarregando(true);
     try {
-      const token = getToken();
       const res = await fetch("/api/sessoes", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           paciente: pacienteId,
           planoTratamento: planoAtivoId,
@@ -103,10 +104,9 @@ export default function AbaSessoes({ pacienteId }: { pacienteId: string }) {
 
   async function excluirSessao(id: string) {
     if (!confirm("Remover esta sessão?")) return;
-    const token = getToken();
     await fetch(`/api/sessoes/${id}`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
     });
     buscarSessoes();
   }
