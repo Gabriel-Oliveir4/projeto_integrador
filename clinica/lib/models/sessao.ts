@@ -1,6 +1,7 @@
 import mongoose, {Schema, Document, Types} from "mongoose";
 
 export interface ISessao extends Document {
+    fisio: Types.ObjectId;
     paciente: Types.ObjectId;
     planoTratamento: Types.ObjectId;
     data: Date;
@@ -9,6 +10,7 @@ export interface ISessao extends Document {
 }
 
 const SessaoSchema: Schema = new Schema<ISessao>({
+    fisio: {type: Schema.Types.ObjectId, ref: "User", required: true},
     paciente: {type: Schema.Types.ObjectId, ref: "Paciente", required: true},
     planoTratamento: {type: Schema.Types.ObjectId, ref: "PlanoTratamento", required: true},
     data: {type: Date, required: true},

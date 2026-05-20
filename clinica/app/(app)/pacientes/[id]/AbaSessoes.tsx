@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus } from "lucide-react";
+import { Plus, ChevronRight } from "lucide-react";
 import { getToken } from "@/lib/utils/token";
-import DetalheSessao from "./DetalheSessao";
 
 interface Sessao {
   _id: string;
@@ -26,7 +26,7 @@ const STATUS_COR: Record<string, string> = {
   agendado: "bg-blue-100 text-blue-700",
   em_andamento: "bg-amber-100 text-amber-700",
   concluido: "bg-green-100 text-green-700",
-  cancelado: "bg-slate-100 text-slate-500",
+  cancelado: "bg-slate-200 text-slate-600",
   nao_compareceu: "bg-red-100 text-red-700",
 };
 
@@ -38,7 +38,6 @@ export default function AbaSessoes({ pacienteId }: { pacienteId: string }) {
   const [obs, setObs] = useState("");
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState("");
-  const [sessaoExpandida, setSessaoExpandida] = useState<string | null>(null);
 
   useEffect(() => {
     buscarPlano();
@@ -109,7 +108,6 @@ export default function AbaSessoes({ pacienteId }: { pacienteId: string }) {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token}` },
     });
-    if (sessaoExpandida === id) setSessaoExpandida(null);
     buscarSessoes();
   }
 
@@ -155,38 +153,23 @@ export default function AbaSessoes({ pacienteId }: { pacienteId: string }) {
         <p className="text-sm text-slate-400">Nenhuma sessão agendada ainda.</p>
       ) : (
         <ul className="space-y-2">
-          {sessoes.map((s) => {
-            const expandida = sessaoExpandida === s._id;
-            return (
-              <li key={s._id} className="border rounded-lg">
-                <div className="flex items-center justify-between p-3">
-                  <div className="flex items-center gap-3">
-                    <span className={`text-xs px-2 py-1 rounded-full ${STATUS_COR[s.status] || "bg-slate-100"}`}>
-                      {s.status}
-                    </span>
-                    <span className="text-sm">{new Date(s.data).toLocaleString("pt-BR")}</span>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setSessaoExpandida(expandida ? null : s._id)}
-                    >
-                      {expandida ? "Fechar" : "Abrir"}
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => excluirSessao(s._id)}>
-                      Excluir
-                    </Button>
-                  </div>
-                </div>
-                {expandida && (
-                  <div className="p-3 border-t">
-                    <DetalheSessao sessaoId={s._id} onAtualizar={buscarSessoes} />
-                  </div>
-                )}
-              </li>
-            );
-          })}
+          {sessoes.map((s) => (
+            <li key={s._id} className="border rounded-lg flex items-center justify-between p-3">
+              <Link
+                href={`/pacientes/${pacienteId}/sessoes/${s._id}`}
+                className="flex items-center gap-3 flex-1 hover:opacity-80"
+              >
+                <span className={`text-xs px-2 py-1 rounded-full ${STATUS_COR[s.status] || "bg-slate-100"}`}>
+                  {s.status}
+                </span>
+                <span className="text-sm">{new Date(s.data).toLocaleString("pt-BR")}</span>
+                <ChevronRight size={14} className="text-slate-400 ml-auto" />
+              </Link>
+              <Button size="sm" variant="outline" className="ml-3" onClick={() => excluirSessao(s._id)}>
+                Excluir
+              </Button>
+            </li>
+          ))}
         </ul>
       )}
     </div>

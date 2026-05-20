@@ -13,6 +13,7 @@ import {
 import {
   LayoutDashboard,
   Users,
+  Calendar,
   Menu,
   X,
   LogOut,
@@ -21,6 +22,7 @@ import {
 const menuItems = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "Pacientes", href: "/pacientes", icon: Users },
+  { label: "Agendamentos", href: "/agendamentos", icon: Calendar },
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {

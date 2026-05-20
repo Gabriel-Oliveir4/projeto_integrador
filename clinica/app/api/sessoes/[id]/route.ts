@@ -14,8 +14,24 @@ export const GET = apiHandler(async (_req, _userId, params) => {
 });
 
 // Editar sessão (data, status, observações)
-export const PUT = apiHandler(async (request, _userId, params) => {
+export const PUT = apiHandler(async (request, userId, params) => {
   const body = await request.json();
+
+  if (body.data) {
+    const conflito = await Sessao.findOne({
+      _id: { $ne: params.id },
+      fisio: userId,
+      data: new Date(body.data),
+      status: { $in: ["agendado", "em_andamento"] },
+    });
+    if (conflito) {
+      return NextResponse.json(
+        { erro: "Já existe uma sessão agendada neste horário." },
+        { status: 409 }
+      );
+    }
+  }
+
   const sessao = await Sessao.findByIdAndUpdate(params.id, body, { new: true, runValidators: true });
   if (!sessao) return NextResponse.json({ erro: "Sessão não encontrada" }, { status: 404 });
   return NextResponse.json(sessao);

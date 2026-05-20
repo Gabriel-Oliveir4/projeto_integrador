@@ -26,14 +26,25 @@ interface Sessao {
   observacoesGerais?: string;
 }
 
-const STATUS_SESSAO = ["agendado", "em_andamento", "concluido", "cancelado", "nao_compareceu"];
 const STATUS_EXERCICIO = ["realizado", "adaptado", "nao_realizado", "superado"];
+
+const STATUS_COR: Record<string, string> = {
+  agendado: "bg-blue-100 text-blue-700",
+  em_andamento: "bg-amber-100 text-amber-700",
+  concluido: "bg-green-100 text-green-700",
+  cancelado: "bg-slate-200 text-slate-600",
+  nao_compareceu: "bg-red-100 text-red-700",
+};
+
+const STATUS_FINALIZADOS = ["concluido", "cancelado", "nao_compareceu"];
 
 export default function DetalheSessao({ sessaoId, onAtualizar }: { sessaoId: string; onAtualizar?: () => void }) {
   const [sessao, setSessao] = useState<Sessao | null>(null);
   const [exercicios, setExercicios] = useState<SessaoExercicio[]>([]);
   const [observacoes, setObservacoes] = useState("");
   const [salvandoIds, setSalvandoIds] = useState<string[]>([]);
+
+  const trancada = !!sessao && STATUS_FINALIZADOS.includes(sessao.status);
 
   useEffect(() => {
     buscar();
@@ -80,34 +91,81 @@ export default function DetalheSessao({ sessaoId, onAtualizar }: { sessaoId: str
     setExercicios((prev) => prev.map((x) => (x._id === id ? { ...x, ...campos } : x)));
   }
 
+  async function iniciar() {
+    await atualizarSessao({ status: "em_andamento" });
+  }
+
+  async function concluir() {
+    if (!confirm("Concluir a sessão? Depois disso ela não poderá mais ser editada.")) return;
+    await atualizarSessao({ observacoesGerais: observacoes, status: "concluido" });
+  }
+
+  async function cancelar() {
+    if (!confirm("Cancelar esta sessão?")) return;
+    await atualizarSessao({ status: "cancelado" });
+  }
+
+  async function marcarFalta() {
+    if (!confirm("Marcar como não compareceu?")) return;
+    await atualizarSessao({ status: "nao_compareceu" });
+  }
+
   if (!sessao) return <p className="text-sm text-slate-400">Carregando sessão...</p>;
 
   return (
-    <div className="space-y-4 border rounded-lg p-4">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4">
+      {/* Cabeçalho — único lugar onde data + status aparecem */}
+      <div className="flex items-center justify-between border-b pb-3">
         <div>
-          <p className="text-xs text-slate-400">Sessão</p>
-          <p className="font-medium">{new Date(sessao.data).toLocaleString("pt-BR")}</p>
+          <h1 className="text-xl font-semibold text-slate-800">
+            {new Date(sessao.data).toLocaleString("pt-BR")}
+          </h1>
+          <span
+            className={`inline-block mt-1 text-xs px-2 py-1 rounded-full ${STATUS_COR[sessao.status] || "bg-slate-100"}`}
+          >
+            {sessao.status}
+          </span>
         </div>
-        <select
-          className="border rounded px-2 py-1 text-sm"
-          value={sessao.status}
-          onChange={(e) => atualizarSessao({ status: e.target.value })}
-        >
-          {STATUS_SESSAO.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
+
+        <div className="flex gap-2">
+          {sessao.status === "agendado" && (
+            <>
+              <Button size="sm" variant="outline" onClick={marcarFalta}>
+                Não compareceu
+              </Button>
+              <Button size="sm" variant="outline" onClick={cancelar}>
+                Cancelar
+              </Button>
+              <Button size="sm" onClick={iniciar}>
+                Iniciar sessão
+              </Button>
+            </>
+          )}
+          {sessao.status === "em_andamento" && (
+            <Button size="sm" onClick={concluir}>
+              Concluir sessão
+            </Button>
+          )}
+        </div>
       </div>
+
+      {trancada && (
+        <div className="text-xs px-3 py-2 rounded bg-slate-100 text-slate-600">
+          Sessão {sessao.status} — não pode mais ser editada.
+        </div>
+      )}
 
       <div className="space-y-2">
         <Label>Observações gerais</Label>
         <Textarea
           value={observacoes}
           onChange={(e) => setObservacoes(e.target.value)}
-          onBlur={() => atualizarSessao({ observacoesGerais: observacoes })}
+          onBlur={() => {
+            if (!trancada && observacoes !== (sessao.observacoesGerais || "")) {
+              atualizarSessao({ observacoesGerais: observacoes });
+            }
+          }}
+          disabled={trancada}
           placeholder="Observações da sessão"
         />
       </div>
@@ -126,9 +184,10 @@ export default function DetalheSessao({ sessaoId, onAtualizar }: { sessaoId: str
               <div className="flex items-center gap-2">
                 <Label className="text-xs">Status</Label>
                 <select
-                  className="border rounded px-2 py-1 text-sm"
+                  className="border rounded px-2 py-1 text-sm disabled:bg-slate-50 disabled:text-slate-400"
                   value={item.status}
                   onChange={(e) => atualizarItem(item._id, { status: e.target.value })}
+                  disabled={trancada}
                 >
                   {STATUS_EXERCICIO.map((s) => (
                     <option key={s} value={s}>
@@ -141,14 +200,17 @@ export default function DetalheSessao({ sessaoId, onAtualizar }: { sessaoId: str
                 placeholder="Comentário desta sessão"
                 value={item.comentario || ""}
                 onChange={(e) => atualizarItem(item._id, { comentario: e.target.value })}
+                disabled={trancada}
               />
-              <Button
-                size="sm"
-                onClick={() => salvarExercicio(item)}
-                disabled={salvandoIds.includes(item._id)}
-              >
-                {salvandoIds.includes(item._id) ? "Salvando..." : "Salvar"}
-              </Button>
+              {!trancada && (
+                <Button
+                  size="sm"
+                  onClick={() => salvarExercicio(item)}
+                  disabled={salvandoIds.includes(item._id)}
+                >
+                  {salvandoIds.includes(item._id) ? "Salvando..." : "Salvar"}
+                </Button>
+              )}
             </div>
           ))
         )}
