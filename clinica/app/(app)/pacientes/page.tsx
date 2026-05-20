@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus } from "lucide-react";
+import { Plus, Pencil } from "lucide-react";
 import { mascaraCelular, celularValido } from "@/lib/utils/mascaras";
 import { CampoErro } from "@/components/ui/campo-erro";
 
@@ -14,7 +14,10 @@ interface Paciente {
   _id: string;
   nome: string;
   sobrenome: string;
+  dataNascimento?: string;
+  sexo?: string;
   celular?: string;
+  observacoes?: string;
   status: string;
 }
 
@@ -30,20 +33,43 @@ const formInicial = {
 export default function PacientesPage() {
   const [pacientes, setPacientes] = useState<Paciente[]>([]);
   const [form, setForm] = useState(formInicial);
+  const [editandoId, setEditandoId] = useState<string | null>(null);
   const [modalAberto, setModalAberto] = useState(false);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState("");
+  const [erros, setErros] = useState<Record<string, string>>({});
 
   useEffect(() => {
     buscarPacientes();
   }, []);
 
-  const [erros, setErros] = useState<Record<string, string>>({});
-
   async function buscarPacientes() {
     const res = await fetch("/api/pacientes", { credentials: "include" });
     const data = await res.json();
     setPacientes(Array.isArray(data) ? data : []);
+  }
+
+  function abrirNovo() {
+    setEditandoId(null);
+    setForm(formInicial);
+    setErros({});
+    setErro("");
+    setModalAberto(true);
+  }
+
+  function abrirEditar(p: Paciente) {
+    setEditandoId(p._id);
+    setForm({
+      nome: p.nome,
+      sobrenome: p.sobrenome,
+      dataNascimento: p.dataNascimento ? p.dataNascimento.slice(0, 10) : "",
+      sexo: p.sexo || "",
+      celular: p.celular || "",
+      observacoes: p.observacoes || "",
+    });
+    setErros({});
+    setErro("");
+    setModalAberto(true);
   }
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
@@ -66,14 +92,17 @@ export default function PacientesPage() {
     return Object.keys(e).length === 0;
   }
 
-  async function handleCadastrar() {
+  async function handleSalvar() {
     setErro("");
     if (!validar()) return;
     setCarregando(true);
 
     try {
-      const res = await fetch("/api/pacientes", {
-        method: "POST",
+      const url = editandoId ? `/api/pacientes/${editandoId}` : "/api/pacientes";
+      const method = editandoId ? "PUT" : "POST";
+
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify(form),
@@ -87,8 +116,6 @@ export default function PacientesPage() {
       }
 
       setModalAberto(false);
-      setForm(formInicial);
-      setErros({});
       buscarPacientes();
     } finally {
       setCarregando(false);
@@ -101,15 +128,15 @@ export default function PacientesPage() {
         <h1 className="text-2xl font-semibold text-slate-800">Pacientes</h1>
 
         <Dialog open={modalAberto} onOpenChange={setModalAberto}>
-          <DialogTrigger>
-            <Button>
+          <DialogTrigger asChild>
+            <Button onClick={abrirNovo}>
               <Plus size={16} className="mr-2" />
               Novo paciente
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Cadastrar paciente</DialogTitle>
+              <DialogTitle>{editandoId ? "Editar paciente" : "Cadastrar paciente"}</DialogTitle>
             </DialogHeader>
 
             <div className="space-y-4 mt-2">
@@ -161,8 +188,8 @@ export default function PacientesPage() {
 
               {erro && <p className="text-sm text-red-500">{erro}</p>}
 
-              <Button className="w-full" onClick={handleCadastrar} disabled={carregando}>
-                {carregando ? "Cadastrando..." : "Cadastrar"}
+              <Button className="w-full" onClick={handleSalvar} disabled={carregando}>
+                {carregando ? "Salvando..." : editandoId ? "Salvar alterações" : "Cadastrar"}
               </Button>
             </div>
           </DialogContent>
@@ -198,9 +225,18 @@ export default function PacientesPage() {
                   </span>
                 </TableCell>
                 <TableCell>
-                  <a href={`/pacientes/${p._id}`} className="text-sm text-slate-500 hover:text-slate-900 underline">
-                    Ver
-                  </a>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => abrirEditar(p)}
+                      className="text-slate-400 hover:text-slate-700"
+                      title="Editar paciente"
+                    >
+                      <Pencil size={14} />
+                    </button>
+                    <a href={`/pacientes/${p._id}`} className="text-sm text-slate-500 hover:text-slate-900 underline">
+                      Ver
+                    </a>
+                  </div>
                 </TableCell>
               </TableRow>
             ))

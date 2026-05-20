@@ -30,6 +30,14 @@ export const POST = apiHandler(async (request, userId) => {
   // body: { paciente, planoTratamento, data, observacoesGerais? }
 
   const dataSessao = new Date(body.data);
+
+  if (dataSessao < new Date()) {
+    return NextResponse.json(
+      { erro: "Não é possível agendar uma sessão em uma data que já passou." },
+      { status: 400 }
+    );
+  }
+
   const conflito = await Sessao.findOne({
     fisio: userId,
     data: dataSessao,

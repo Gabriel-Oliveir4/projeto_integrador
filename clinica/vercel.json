@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/sessoes-expiradas",
+      "schedule": "0 3 * * *"
+    }
+  ]
+}

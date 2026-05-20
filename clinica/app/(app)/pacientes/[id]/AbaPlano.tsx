@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus } from "lucide-react";
+import { Plus, Pencil } from "lucide-react";
 
 interface Exercicio {
   _id: string;
@@ -51,6 +51,7 @@ export default function AbaPlano({ pacienteId }: { pacienteId: string }) {
   const [form, setForm] = useState(formInicial);
   const [exercicios, setExercicios] = useState<Exercicio[]>([]);
   const [exerciciosSelecionados, setExerciciosSelecionados] = useState<string[]>([]);
+  const [editandoId, setEditandoId] = useState<string | null>(null);
   const [modalAberto, setModalAberto] = useState(false);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState("");
@@ -76,6 +77,33 @@ export default function AbaPlano({ pacienteId }: { pacienteId: string }) {
     setExercicios(Array.isArray(data) ? data : []);
   }
 
+  function abrirNovo() {
+    setEditandoId(null);
+    setForm(formInicial);
+    setExerciciosSelecionados([]);
+    setErro("");
+    setModalAberto(true);
+  }
+
+  function abrirEditar(plano: PlanoTratamento) {
+    setEditandoId(plano._id);
+    setForm({
+      queixa: plano.queixa,
+      historico: plano.historico || "",
+      diagnostico: plano.diagnostico || "",
+      objetivo: plano.objetivo || "",
+      frequenciaSemanal: plano.frequenciaSemanal?.toString() || "",
+      sessoesPrevistas: plano.sessoesPrevistas?.toString() || "",
+      dataInicio: plano.dataInicio ? plano.dataInicio.slice(0, 10) : "",
+      previsaoAlta: plano.previsaoAlta ? plano.previsaoAlta.slice(0, 10) : "",
+    });
+    setExerciciosSelecionados(
+      plano.exercicios?.map((e) => e.exercicio._id) || []
+    );
+    setErro("");
+    setModalAberto(true);
+  }
+
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
     setForm({ ...form, [e.target.name]: e.target.value });
   }
@@ -86,7 +114,7 @@ export default function AbaPlano({ pacienteId }: { pacienteId: string }) {
     );
   }
 
-  async function handleCadastrar() {
+  async function handleSalvar() {
     setErro("");
     if (!form.queixa.trim()) {
       setErro("Queixa principal é obrigatória.");
@@ -99,8 +127,11 @@ export default function AbaPlano({ pacienteId }: { pacienteId: string }) {
     setCarregando(true);
 
     try {
-      const res = await fetch("/api/planoTratamento", {
-        method: "POST",
+      const url = editandoId ? `/api/planoTratamento/${editandoId}` : "/api/planoTratamento";
+      const method = editandoId ? "PUT" : "POST";
+
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
@@ -118,8 +149,6 @@ export default function AbaPlano({ pacienteId }: { pacienteId: string }) {
       }
 
       setModalAberto(false);
-      setForm(formInicial);
-      setExerciciosSelecionados([]);
       buscarPlanos();
     } finally {
       setCarregando(false);
@@ -132,15 +161,15 @@ export default function AbaPlano({ pacienteId }: { pacienteId: string }) {
         <h2 className="text-lg font-medium text-slate-800">Plano de Tratamento</h2>
 
         <Dialog open={modalAberto} onOpenChange={setModalAberto}>
-          <DialogTrigger>
-            <Button>
+          <DialogTrigger asChild>
+            <Button onClick={abrirNovo}>
               <Plus size={16} className="mr-2" />
               Novo plano
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Cadastrar plano de tratamento</DialogTitle>
+              <DialogTitle>{editandoId ? "Editar plano de tratamento" : "Cadastrar plano de tratamento"}</DialogTitle>
             </DialogHeader>
 
             <div className="space-y-4 mt-2">
@@ -213,19 +242,25 @@ export default function AbaPlano({ pacienteId }: { pacienteId: string }) {
 
               {erro && <p className="text-sm text-red-500">{erro}</p>}
 
-              <Button className="w-full" onClick={handleCadastrar} disabled={carregando}>
-                {carregando ? "Salvando..." : "Salvar plano"}
+              <Button className="w-full" onClick={handleSalvar} disabled={carregando}>
+                {carregando ? "Salvando..." : editandoId ? "Salvar alterações" : "Salvar plano"}
               </Button>
             </div>
           </DialogContent>
         </Dialog>
       </div>
 
-      {/* Plano ativo */}
       {planoAtivo ? (
         <div className="border rounded-lg p-4 space-y-4">
           <div className="flex items-center justify-between">
             <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700">ativo</span>
+            <button
+              onClick={() => abrirEditar(planoAtivo)}
+              className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800"
+            >
+              <Pencil size={13} />
+              Editar plano
+            </button>
           </div>
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
