@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 
 
 //verifica se tem tooken, se nao tiver jooga proo login
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const token = request.cookies.get("token")?.value;
   const { pathname } = request.nextUrl;
 
