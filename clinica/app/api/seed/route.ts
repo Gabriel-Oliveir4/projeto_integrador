@@ -23,11 +23,20 @@ const exercicios = [
 export async function GET() {
   await connectDB();
 
-  const total = await Exercicio.countDocuments();
-  if (total > 0) {
-    return NextResponse.json({ mensagem: "Exercícios já cadastrados!", total });
-  }
+  const ops = exercicios.map((ex) => ({
+    updateOne: {
+      filter: { nome: ex.nome },
+      update: { $setOnInsert: ex },
+      upsert: true,
+    },
+  }));
 
-  await Exercicio.insertMany(exercicios);
-  return NextResponse.json({ mensagem: `${exercicios.length} exercícios cadastrados com sucesso!` });
+  const result = await Exercicio.bulkWrite(ops);
+
+  return NextResponse.json({
+    mensagem: "Seed executada",
+    inseridos: result.upsertedCount,
+    jaExistiam: exercicios.length - result.upsertedCount,
+    total: exercicios.length,
+  });
 }

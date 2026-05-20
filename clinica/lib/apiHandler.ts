@@ -6,13 +6,13 @@ import { verificarToken } from "@/lib/auth";
 export function apiHandler(
   handler: (request: Request, userId: string, params?: any) => Promise<NextResponse>
 ) {
-  return async (request: Request, context?: { params?: any }) => {
+  return async (request: Request, context?: { params?: Promise<any> }) => {
     const auth = verificarToken(request);
     if (auth.erro) return auth.erro;
-
     try {
       await connectDB();
-      return await handler(request, auth.userId!, context?.params);
+      const params = context?.params ? await context.params : undefined;
+      return await handler(request, auth.userId!, params);
     } catch (error) {
       console.error(error);
       return NextResponse.json({ erro: "Erro interno do servidor" }, { status: 500 });

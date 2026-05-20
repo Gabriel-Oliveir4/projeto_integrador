@@ -9,6 +9,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Plus } from "lucide-react";
 import { getToken } from "@/lib/utils/token";
 
+interface Exercicio {
+  _id: string;
+  nome: string;
+  descricao: string;
+}
+
 interface PlanoTratamento {
   _id: string;
   queixa: string;
@@ -19,6 +25,7 @@ interface PlanoTratamento {
   sessoesPrevistas?: number;
   dataInicio?: string;
   previsaoAlta?: string;
+  exercicios?: Exercicio[];
   status: string;
 }
 
@@ -37,12 +44,15 @@ export default function AbaPlano({ pacienteId }: { pacienteId: string }) {
   const [planos, setPlanos] = useState<PlanoTratamento[]>([]);
   const [planoAtivo, setPlanoAtivo] = useState<PlanoTratamento | null>(null);
   const [form, setForm] = useState(formInicial);
+  const [exercicios, setExercicios] = useState<Exercicio[]>([]);
+  const [exerciciosSelecionados, setExerciciosSelecionados] = useState<string[]>([]);
   const [modalAberto, setModalAberto] = useState(false);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState("");
 
   useEffect(() => {
     buscarPlanos();
+    buscarExercicios();
   }, []);
 
   async function buscarPlanos() {
@@ -55,8 +65,23 @@ export default function AbaPlano({ pacienteId }: { pacienteId: string }) {
     setPlanoAtivo(data.find((p: PlanoTratamento) => p.status === "ativo") || null);
   }
 
+  async function buscarExercicios() {
+    const token = getToken();
+    const res = await fetch("/api/exercicios", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    setExercicios(Array.isArray(data) ? data : []);
+  }
+
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
     setForm({ ...form, [e.target.name]: e.target.value });
+  }
+
+  function toggleExercicio(id: string) {
+    setExerciciosSelecionados((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
   }
 
   async function handleCadastrar() {
@@ -71,7 +96,11 @@ export default function AbaPlano({ pacienteId }: { pacienteId: string }) {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ ...form, paciente: pacienteId }),
+        body: JSON.stringify({
+          ...form,
+          paciente: pacienteId,
+          exercicios: exerciciosSelecionados,
+        }),
       });
 
       const data = await res.json();
@@ -83,6 +112,7 @@ export default function AbaPlano({ pacienteId }: { pacienteId: string }) {
 
       setModalAberto(false);
       setForm(formInicial);
+      setExerciciosSelecionados([]);
       buscarPlanos();
     } finally {
       setCarregando(false);
@@ -101,7 +131,7 @@ export default function AbaPlano({ pacienteId }: { pacienteId: string }) {
               Novo plano
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Cadastrar plano de tratamento</DialogTitle>
             </DialogHeader>
@@ -149,6 +179,31 @@ export default function AbaPlano({ pacienteId }: { pacienteId: string }) {
                 </div>
               </div>
 
+              <div className="space-y-2">
+                <Label>Exercícios</Label>
+                <div className="border rounded-md p-3 max-h-48 overflow-y-auto space-y-2">
+                  {exercicios.length === 0 && (
+                    <p className="text-sm text-slate-400">
+                      Nenhum exercício cadastrado. Rode <code>/api/seed</code> para popular.
+                    </p>
+                  )}
+                  {exercicios.map((ex) => (
+                    <label key={ex._id} className="flex items-start gap-2 text-sm cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={exerciciosSelecionados.includes(ex._id)}
+                        onChange={() => toggleExercicio(ex._id)}
+                        className="mt-1"
+                      />
+                      <span>
+                        <span className="font-medium">{ex.nome}</span>
+                        <span className="block text-slate-500">{ex.descricao}</span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
               {erro && <p className="text-sm text-red-500">{erro}</p>}
 
               <Button className="w-full" onClick={handleCadastrar} disabled={carregando}>
@@ -193,6 +248,21 @@ export default function AbaPlano({ pacienteId }: { pacienteId: string }) {
             <div className="col-span-2">
               <p className="text-slate-400">Histórico clínico</p>
               <p className="font-medium">{planoAtivo.historico || "—"}</p>
+            </div>
+            <div className="col-span-2">
+              <p className="text-slate-400">Exercícios prescritos</p>
+              {planoAtivo.exercicios && planoAtivo.exercicios.length > 0 ? (
+                <ul className="list-disc pl-5 space-y-1 mt-1">
+                  {planoAtivo.exercicios.map((ex) => (
+                    <li key={ex._id}>
+                      <span className="font-medium">{ex.nome}</span>
+                      <span className="text-slate-500"> — {ex.descricao}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="font-medium">—</p>
+              )}
             </div>
           </div>
         </div>

@@ -10,6 +10,7 @@ export interface IPlanoTratamento extends Document {
     sessoesPrevistas?: number;
     dataInicio?: Date;
     previsaoAlta?: Date;
+    exercicios: Types.ObjectId[];
     status: "ativo" | "finalizado" | "cancelado";
 }
 
@@ -23,6 +24,7 @@ const PlanoTratamentoSchema = new Schema<IPlanoTratamento>({
     sessoesPrevistas: { type: Number },
     dataInicio: { type: Date },
     previsaoAlta: { type: Date },
+    exercicios: [{ type: Schema.Types.ObjectId, ref: "PlanoExercicio" }],
     status: { type: String, enum: ["ativo", "finalizado", "cancelado"], default: "ativo" }
 }, { timestamps: true });
 
