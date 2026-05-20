@@ -102,15 +102,6 @@ export default function AbaSessoes({ pacienteId }: { pacienteId: string }) {
     }
   }
 
-  async function excluirSessao(id: string) {
-    if (!confirm("Remover esta sessão?")) return;
-    await fetch(`/api/sessoes/${id}`, {
-      method: "DELETE",
-      credentials: "include",
-    });
-    buscarSessoes();
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -165,9 +156,6 @@ export default function AbaSessoes({ pacienteId }: { pacienteId: string }) {
                 <span className="text-sm">{new Date(s.data).toLocaleString("pt-BR")}</span>
                 <ChevronRight size={14} className="text-slate-400 ml-auto" />
               </Link>
-              <Button size="sm" variant="outline" className="ml-3" onClick={() => excluirSessao(s._id)}>
-                Excluir
-              </Button>
             </li>
           ))}
         </ul>

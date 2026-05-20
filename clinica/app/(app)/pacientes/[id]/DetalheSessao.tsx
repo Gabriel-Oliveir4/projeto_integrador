@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { DialogConfirmar } from "@/components/ui/dialog-confirmar";
 
 interface Exercicio {
   _id: string;
@@ -37,11 +38,15 @@ const STATUS_COR: Record<string, string> = {
 
 const STATUS_FINALIZADOS = ["concluido", "cancelado", "nao_compareceu"];
 
+type ConfirmacaoPendente = "concluir" | "cancelar" | "falta" | null;
+
 export default function DetalheSessao({ sessaoId, onAtualizar }: { sessaoId: string; onAtualizar?: () => void }) {
   const [sessao, setSessao] = useState<Sessao | null>(null);
   const [exercicios, setExercicios] = useState<SessaoExercicio[]>([]);
   const [observacoes, setObservacoes] = useState("");
   const [salvandoIds, setSalvandoIds] = useState<string[]>([]);
+  const [confirmacao, setConfirmacao] = useState<ConfirmacaoPendente>(null);
+  const [confirmandoAcao, setConfirmandoAcao] = useState(false);
 
   const trancada = !!sessao && STATUS_FINALIZADOS.includes(sessao.status);
 
@@ -87,30 +92,44 @@ export default function DetalheSessao({ sessaoId, onAtualizar }: { sessaoId: str
     setExercicios((prev) => prev.map((x) => (x._id === id ? { ...x, ...campos } : x)));
   }
 
-  async function iniciar() {
-    await atualizarSessao({ status: "em_andamento" });
+  async function confirmarAcao() {
+    setConfirmandoAcao(true);
+    try {
+      if (confirmacao === "concluir") {
+        await atualizarSessao({ observacoesGerais: observacoes, status: "concluido" });
+      } else if (confirmacao === "cancelar") {
+        await atualizarSessao({ status: "cancelado" });
+      } else if (confirmacao === "falta") {
+        await atualizarSessao({ status: "nao_compareceu" });
+      }
+    } finally {
+      setConfirmandoAcao(false);
+      setConfirmacao(null);
+    }
   }
 
-  async function concluir() {
-    if (!confirm("Concluir a sessão? Depois disso ela não poderá mais ser editada.")) return;
-    await atualizarSessao({ observacoesGerais: observacoes, status: "concluido" });
-  }
-
-  async function cancelar() {
-    if (!confirm("Cancelar esta sessão?")) return;
-    await atualizarSessao({ status: "cancelado" });
-  }
-
-  async function marcarFalta() {
-    if (!confirm("Marcar como não compareceu?")) return;
-    await atualizarSessao({ status: "nao_compareceu" });
-  }
+  const dialogProps: Record<NonNullable<ConfirmacaoPendente>, { titulo: string; descricao: string; variant: "default" | "destrutivo" }> = {
+    concluir: {
+      titulo: "Concluir sessão",
+      descricao: "Depois disso a sessão não poderá mais ser editada.",
+      variant: "default",
+    },
+    cancelar: {
+      titulo: "Cancelar sessão",
+      descricao: "Tem certeza que deseja cancelar esta sessão?",
+      variant: "destrutivo",
+    },
+    falta: {
+      titulo: "Marcar falta",
+      descricao: "Marcar que o paciente não compareceu a esta sessão?",
+      variant: "destrutivo",
+    },
+  };
 
   if (!sessao) return <p className="text-sm text-slate-400">Carregando sessão...</p>;
 
   return (
     <div className="space-y-4">
-      {/* Cabeçalho — único lugar onde data + status aparecem */}
       <div className="flex items-center justify-between border-b pb-3">
         <div>
           <h1 className="text-xl font-semibold text-slate-800">
@@ -126,19 +145,19 @@ export default function DetalheSessao({ sessaoId, onAtualizar }: { sessaoId: str
         <div className="flex gap-2">
           {sessao.status === "agendado" && (
             <>
-              <Button size="sm" variant="outline" onClick={marcarFalta}>
+              <Button size="sm" variant="outline" onClick={() => setConfirmacao("falta")}>
                 Não compareceu
               </Button>
-              <Button size="sm" variant="outline" onClick={cancelar}>
+              <Button size="sm" variant="outline" onClick={() => setConfirmacao("cancelar")}>
                 Cancelar
               </Button>
-              <Button size="sm" onClick={iniciar}>
+              <Button size="sm" onClick={() => atualizarSessao({ status: "em_andamento" })}>
                 Iniciar sessão
               </Button>
             </>
           )}
           {sessao.status === "em_andamento" && (
-            <Button size="sm" onClick={concluir}>
+            <Button size="sm" onClick={() => setConfirmacao("concluir")}>
               Concluir sessão
             </Button>
           )}
@@ -211,6 +230,18 @@ export default function DetalheSessao({ sessaoId, onAtualizar }: { sessaoId: str
           ))
         )}
       </div>
+
+      {confirmacao && (
+        <DialogConfirmar
+          open
+          onOpenChange={(v) => { if (!v) setConfirmacao(null); }}
+          titulo={dialogProps[confirmacao].titulo}
+          descricao={dialogProps[confirmacao].descricao}
+          variant={dialogProps[confirmacao].variant}
+          onConfirmar={confirmarAcao}
+          carregando={confirmandoAcao}
+        />
+      )}
     </div>
   );
 }
