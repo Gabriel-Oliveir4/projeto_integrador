@@ -128,7 +128,7 @@ export default function PacientesPage() {
         <h1 className="text-2xl font-semibold text-slate-800">Pacientes</h1>
 
         <Dialog open={modalAberto} onOpenChange={setModalAberto}>
-          <DialogTrigger asChild>
+          <DialogTrigger>
             <Button onClick={abrirNovo}>
               <Plus size={16} className="mr-2" />
               Novo paciente
