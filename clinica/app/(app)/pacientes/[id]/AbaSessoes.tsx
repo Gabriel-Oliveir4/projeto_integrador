@@ -119,7 +119,7 @@ export default function AbaSessoes({ pacienteId }: { pacienteId: string }) {
         <h2 className="text-lg font-medium text-slate-800">Sessões</h2>
 
         <Dialog open={modalAberto} onOpenChange={setModalAberto}>
-          <DialogTrigger asChild>
+          <DialogTrigger>
             <Button disabled={!planoAtivoId}>
               <Plus size={16} className="mr-2" />
               Agendar sessão
