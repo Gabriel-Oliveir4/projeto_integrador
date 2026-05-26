@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
 import { verificarToken } from "@/lib/auth";
+import "@/lib/models"; // garante registro de todos os models (evita MissingSchemaError em cold start)
 
 //simplifica o router em cara router. verifica token, conecta no banco e executa a lógica da rota
 export function apiHandler(
