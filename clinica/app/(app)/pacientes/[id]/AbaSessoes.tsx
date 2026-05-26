@@ -93,10 +93,10 @@ export default function AbaSessoes({ pacienteId }: { pacienteId: string }) {
         setErro(body.erro || "Erro ao agendar sessão");
         return;
       }
+      await buscarSessoes();
       setModalAberto(false);
       setData("");
       setObs("");
-      buscarSessoes();
     } finally {
       setCarregando(false);
     }

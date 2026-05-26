@@ -148,8 +148,8 @@ export default function AbaPlano({ pacienteId }: { pacienteId: string }) {
         return;
       }
 
+      await buscarPlanos();
       setModalAberto(false);
-      buscarPlanos();
     } finally {
       setCarregando(false);
     }
@@ -219,9 +219,7 @@ export default function AbaPlano({ pacienteId }: { pacienteId: string }) {
                 <Label>Exercícios</Label>
                 <div className="border rounded-md p-3 max-h-48 overflow-y-auto space-y-2">
                   {exercicios.length === 0 && (
-                    <p className="text-sm text-slate-400">
-                      Nenhum exercício cadastrado. Rode <code>/api/seed</code> para popular.
-                    </p>
+                    <p className="text-sm text-slate-400">Nenhum exercício cadastrado.</p>
                   )}
                   {exercicios.map((ex) => (
                     <label key={ex._id} className="flex items-start gap-2 text-sm cursor-pointer">

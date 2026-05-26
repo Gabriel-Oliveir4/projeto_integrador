@@ -115,8 +115,8 @@ export default function PacientesPage() {
         return;
       }
 
+      await buscarPacientes();
       setModalAberto(false);
-      buscarPacientes();
     } finally {
       setCarregando(false);
     }
