@@ -3,6 +3,7 @@ import Sessao from "@/lib/models/sessao";
 import SessaoExercicio from "@/lib/models/SessaoExercicio";
 import PlanoExercicio from "@/lib/models/PlanoExercicio";
 import "@/lib/models/Exercicio";
+import "@/lib/models/Paciente";
 import { apiHandler } from "@/lib/apiHandler";
 
 // Listar sessões do fisio logado (filtra opcionalmente por paciente/plano/range de datas)

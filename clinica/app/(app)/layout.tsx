@@ -1,8 +1,6 @@
 "use client";
 
-import { useState } from "react";
 import { usePathname } from "next/navigation";
-import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -14,8 +12,6 @@ import {
   LayoutDashboard,
   Users,
   Calendar,
-  Menu,
-  X,
   LogOut,
 } from "lucide-react";
 
@@ -26,7 +22,6 @@ const menuItems = [
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const [sidebarAberta, setSidebarAberta] = useState(true);
   const pathname = usePathname();
 
   async function handleLogout() {
@@ -41,21 +36,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-screen bg-slate-50">
-      <aside className={`${sidebarAberta ? "w-56" : "w-16"} transition-all duration-200 bg-white border-r flex flex-col`}>
-        <div className="h-16 flex items-center px-4">
-          <span className="text-xl font-bold text-slate-800">
-            {sidebarAberta ? "Clínica" : "C"}
-          </span>
-        </div>
-
-        <Separator />
-
+      <aside className="w-56 bg-white border-r flex flex-col">
         <nav className="flex-1 p-2 space-y-1">
           {menuItems.map((item) => {
             const Icon = item.icon;
             const ativo = pathname === item.href;
             return (
-
               <a
                 key={item.href}
                 href={item.href}
@@ -66,7 +52,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 }`}
               >
                 <Icon size={18} />
-                {sidebarAberta && <span>{item.label}</span>}
+                <span>{item.label}</span>
               </a>
             );
           })}
@@ -75,12 +61,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="h-16 bg-white border-b flex items-center justify-between px-4">
-          <button
-            onClick={() => setSidebarAberta(!sidebarAberta)}
-            className="text-slate-500 hover:text-slate-900"
-          >
-            {sidebarAberta ? <X size={20} /> : <Menu size={20} />}
-          </button>
+          <span className="text-xl font-bold text-slate-800">Clínica</span>
 
           <DropdownMenu>
             <DropdownMenuTrigger>
