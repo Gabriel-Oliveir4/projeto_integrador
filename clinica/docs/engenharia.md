@@ -1,178 +1,119 @@
-# Engenharia de Software
+# Como o sistema foi construído
 
-Decisões técnicas, padrões e arquitetura do projeto.
-
----
-
-## 1. Arquitetura
-
-O sistema segue uma arquitetura cliente-servidor simples, com frontend e backend desacoplados comunicando-se via API REST.
-
-```
-┌─────────────┐        HTTP/JSON        ┌──────────────┐        ┌────────────┐
-│   Frontend  │  ──────────────────────▶│   Backend    │◀──────▶│ PostgreSQL │
-│    React    │◀──────────────────────  │   FastAPI    │        └────────────┘
-└─────────────┘                         └──────────────┘
-```
+Aqui vão as decisões técnicas: que ferramentas, por quê, e como as peças se encaixam. Sem muito formalismo.
 
 ---
 
-## 2. Stack
+## A stack
 
-| Camada | Tecnologia | Justificativa |
-|:---|:---|:---|
-| Frontend | React | Componentização, SPA, ecossistema consolidado |
-| Backend | Python + FastAPI | Tipagem com Pydantic, async nativo, geração automática de docs (Swagger) |
-| Banco de dados | PostgreSQL | Relacional, robusto, suporte a JSONB se necessário |
-| Geração de PDF | WeasyPrint ou Playwright | HTML → PDF no backend |
-| Autenticação | JWT (Bearer token) | Stateless, simples de implementar com FastAPI |
-| Hash de senha | bcrypt / argon2 | Resistente a brute force |
-
----
-
-## 3. Estrutura do Projeto
-
-### Backend (FastAPI)
-
-```
-backend/
-├── main.py                  # Entry point
-├── database.py              # Conexão com PostgreSQL (SQLAlchemy / asyncpg)
-├── models/                  # Modelos ORM
-│   ├── medico.py
-│   ├── paciente.py
-│   ├── ficha_inicial.py
-│   ├── plano_tratamento.py
-│   ├── plano_exercicio.py
-│   ├── sessao.py
-│   ├── sessao_exercicio.py
-│   ├── exercicio.py
-│   ├── paciente_anexo.py
-│   └── agendamento.py
-├── schemas/                 # Schemas Pydantic (request/response)
-├── routers/                 # Endpoints por domínio
-│   ├── auth.py
-│   ├── pacientes.py
-│   ├── fichas.py
-│   ├── planos.py
-│   ├── sessoes.py
-│   ├── exercicios.py
-│   ├── anexos.py
-│   ├── agendamentos.py
-│   └── prontuario.py
-├── services/                # Lógica de negócio
-│   ├── sessao_service.py    # Cópia da bateria do plano ao criar sessão
-│   └── prontuario_service.py
-└── core/
-    ├── config.py            # Variáveis de ambiente
-    └── security.py          # JWT, hash de senha
-```
-
-### Frontend (React)
-
-```
-frontend/
-├── src/
-│   ├── pages/               # Telas principais
-│   │   ├── Login.jsx
-│   │   ├── Dashboard.jsx
-│   │   ├── Paciente.jsx
-│   │   ├── FichaInicial.jsx
-│   │   ├── PlanoTratamento.jsx
-│   │   ├── Sessao.jsx
-│   │   ├── BancoExercicios.jsx
-│   │   ├── Anexos.jsx
-│   │   ├── Agenda.jsx
-│   │   └── Prontuario.jsx
-│   ├── components/          # Componentes reutilizáveis
-│   ├── services/            # Chamadas à API (axios / fetch)
-│   ├── context/             # Estado global (auth, etc.)
-│   └── routes/              # Definição de rotas (React Router)
-```
+| Camada | Ferramenta | Por que |
+|---|---|---|
+| App inteiro | **Next.js 15** (TypeScript) | Frontend e backend no mesmo projeto. Menos repositório, menos deploy, menos dor de cabeça. |
+| Banco | **MongoDB** (via Mongoose) | NoSQL é simples de subir e flexível. O Atlas tem tier grátis. |
+| Login | **JWT em cookie httpOnly** | Cookie vai sozinho em toda requisição, navegador não pode ler via JavaScript (mais seguro). |
+| Senha | **bcrypt** | Padrão da indústria pra hash de senha. |
+| Estilo | **Tailwind CSS + shadcn/ui** | Tailwind é rápido de escrever; shadcn dá componentes bonitos já prontos pra customizar. |
+| Hospedagem | **Vercel** | Faz deploy do Next direto do Git. Tier grátis dá conta. |
 
 ---
 
-## 4. Autenticação
+## Por que Next.js em vez de "backend separado"?
 
-- Registro e login retornam um **JWT** com `medico_id` e tempo de expiração.
-- O token é armazenado no frontend (`localStorage` ou `httpOnly cookie`).
-- Todas as rotas protegidas exigem o header `Authorization: Bearer <token>`.
-- O backend extrai o `medico_id` do token e usa para filtrar todos os dados — um médico nunca acessa dados de outro.
+Pra um projeto feito por uma pessoa só, ter backend Python + frontend React separados é trabalho dobrado: dois deploys, duas linguagens, dois `package.json`. O Next.js permite ter as duas coisas no mesmo lugar — uma pasta com as telas, outra pasta com as rotas de API, mesmo idioma (TypeScript) nos dois lados.
 
 ---
 
-## 5. Regras de Negócio
+## Como o projeto está organizado
 
-| Regra | Onde aplicar |
-|:---|:---|
-| Senha nunca em texto puro | `core/security.py` — sempre hash + salt |
-| Médico só acessa seus próprios pacientes | Filtro obrigatório por `medico_id` em todas as queries |
-| Plano anterior desativado ao criar novo | `services/plano_service.py` |
-| Ao criar sessão, copiar bateria do plano ativo | `services/sessao_service.py` |
-| Remover exercício da sessão = soft delete | `removido = true` em `sessao_exercicio` |
-| Agendamento vira "realizado" ao iniciar sessão | `services/agendamento_service.py` |
-| Prontuário não é armazenado | Gerado em tempo real, nunca persiste no banco |
-| Exercícios do banco são somente leitura para fisioterapeutas | Controle por role no JWT (`role: medico` vs `role: admin`) |
+```
+app/
+  (auth)/          → telas públicas (login, cadastro)
+  (app)/           → telas autenticadas (com sidebar)
+  api/             → rotas do servidor (endpoints JSON)
+components/ui/     → botões, modais, inputs reutilizáveis
+lib/
+  apiHandler.ts    → wrapper de auth + conexão DB pra todas as rotas
+  auth.ts          → gera e valida JWT
+  mongodb.ts       → conexão cacheada com o Mongo
+  models/          → schemas Mongoose
+docs/              → essa documentação
+```
+
+No Next.js App Router, **a estrutura de pastas é o mapa do site**: cada `page.tsx` vira uma URL, cada `route.ts` vira um endpoint. Não tem arquivo central de rotas.
 
 ---
 
-## 6. Fluxo de Criação de Sessão (backend)
+## Como uma requisição funciona
 
-```
-POST /sessoes
-  1. Validar agendamento (deve existir e estar com status "agendado")
-  2. Buscar plano de tratamento ativo do paciente
-  3. Criar registro em sessao (status = "em_andamento")
-  4. Copiar plano_exercicio → sessao_exercicio (INSERT INTO sessao_exercicio SELECT FROM plano_exercicio)
-  5. Atualizar agendamento.sessao_id e agendamento.status = "realizado"
-  6. Retornar sessão criada com exercícios
-```
+Quando o usuário clica em "Salvar paciente" na tela:
 
----
+1. O componente (no navegador) chama `fetch("/api/pacientes", { method: "POST" })`.
+2. O Next recebe e despacha pra função `POST` em `app/api/pacientes/route.ts`.
+3. Essa função passa pelo `apiHandler`, que:
+   - Lê o cookie, valida o JWT, extrai o `userId`.
+   - Conecta no MongoDB (ou reusa a conexão se já estiver aberta).
+   - Chama o código de verdade da rota, passando o `userId`.
+4. A rota salva o paciente e devolve JSON.
+5. O componente atualiza a tela.
 
-## 7. Geração do Prontuário (backend)
-
-```
-GET /prontuario/{paciente_id}
-  1. Buscar dados do paciente
-  2. Buscar fichas iniciais
-  3. Buscar planos de tratamento
-  4. Buscar sessões finalizadas + sessao_exercicio (excluindo removido = true)
-  5. Buscar anexos
-  6. Montar template HTML com todos os dados
-  7. Converter HTML → PDF (WeasyPrint / Playwright)
-  8. Retornar PDF como stream (Content-Type: application/pdf)
-```
+O `apiHandler` é o "porteiro" — toda rota passa por ele. Garante que ninguém esquece de validar o token.
 
 ---
 
-## 8. Variáveis de Ambiente
+## Como o login funciona
+
+1. Usuário envia email + senha pra `/api/auth`.
+2. Servidor procura o User pelo email, compara a senha (bcrypt).
+3. Se bate, gera um JWT com `{ userId: ..., exp: ... }` assinado com uma chave secreta.
+4. Devolve o JWT como **cookie httpOnly**.
+5. A partir daí, o navegador manda esse cookie sozinho em toda requisição. O servidor decodifica, pega o `userId`, e usa pra filtrar os dados.
+
+Logout é só apagar o cookie.
+
+---
+
+## Como os dados ficam isolados por fisio
+
+Todo paciente tem um campo `fisio` que aponta pro User dono. Todas as consultas filtram por `fisio: userId` (vindo do JWT). O cliente nunca informa o `fisio` no body — vem do token. Isso garante que o fisio A nunca vê o paciente do fisio B.
+
+---
+
+## Regras de negócio principais
+
+- **Senha sempre com hash** — bcrypt, nunca em texto puro.
+- **Um paciente, um plano ativo** — criar um novo finaliza o anterior automaticamente.
+- **Sessão não pode ter conflito** — dois agendamentos do mesmo fisio no mesmo horário, não.
+- **Sessão fechada é imutável** — quando vira `concluido`, `cancelado` ou `nao_compareceu`, a UI trava todos os campos.
+- **Cópia dos exercícios na hora de criar sessão** — o que foi feito naquele dia fica congelado, mesmo que o plano mude depois.
+
+---
+
+## Variáveis de ambiente
 
 ```env
-DATABASE_URL=postgresql+asyncpg://user:password@localhost:5432/fisioterapia
-SECRET_KEY=<chave_jwt_forte>
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=480
-UPLOAD_DIR=./uploads
+MONGODB_URI=mongodb+srv://...
+JWT_SECRET=<chave forte qualquer>
 ```
 
----
-
-## 9. Convenções
-
-- **Branches:** `main` (produção), `dev` (desenvolvimento), `feature/<nome>` para novas features.
-- **Commits:** mensagens em português, imperativas — ex: `Adiciona endpoint de sessão`.
-- **API:** REST, JSON, snake_case nos campos.
-- **Datas:** sempre `TIMESTAMPTZ` no banco, ISO 8601 na API.
-- **Soft delete:** usado apenas em `sessao_exercicio.removido`. Demais tabelas usam `ativo` para desativação lógica.
+São só essas. `MONGODB_URI` vem do MongoDB Atlas. `JWT_SECRET` é uma string aleatória qualquer (não compartilhar).
 
 ---
 
-## 10. Módulos v2 (fora do escopo atual)
+## Quando o servidor "dorme" (serverless)
 
-| Módulo | Descrição |
-|:---|:---|
-| Notificações | Lembrete de consulta por e-mail/WhatsApp |
-| Evolução gráfica | Gráficos de progresso do paciente por exercício |
-| App mobile | Versão mobile para o fisioterapeuta |
-| Multi-clínica | Suporte a múltiplos consultórios por profissional |
+Na Vercel, cada rota é uma função que sobe quando alguém chama e morre depois. Isso traz duas pegadinhas que valem mencionar:
+
+**1. Cold start.** A primeira chamada depois de um tempo parado pode demorar 1-2 segundos (a função precisa subir do zero). Depois disso, fica rápida.
+
+**2. Models do Mongoose.** Cada função é um processo isolado — só os models importados naquele arquivo ficam registrados. Se uma rota faz `populate("paciente")` sem ter importado o model `Paciente`, dá erro `MissingSchemaError`. Por isso o `apiHandler` importa o `lib/models/index.ts`, que registra todos de uma vez.
+
+---
+
+## O que ficou fora
+
+Algumas coisas que estão no plano original mas não foram implementadas — vale registrar:
+
+- Upload de anexos (esquema existe, UI não).
+- Geração de PDF do prontuário.
+- Painel de administrador pra gerenciar o catálogo de exercícios (hoje vem de um seed JSON).
+- Roles (admin vs fisio) no JWT.

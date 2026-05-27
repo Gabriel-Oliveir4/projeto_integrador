@@ -1,175 +1,135 @@
-# Fluxos do Sistema
+# Fluxos do sistema
 
-Descreve os fluxos principais de navegação e operação do aplicativo, do ponto de vista do profissional e do administrador.
-
----
-
-## 1. Cadastro e Login
-
-```
-Acessar sistema
-  └─ Tem conta?
-       ├─ Não → Preencher cadastro (nome, e-mail, senha, celular) → Confirmar → Login automático
-       └─ Sim  → Informar e-mail e senha → Validar credenciais
-                    ├─ OK  → Redirecionar para Dashboard
-                    └─ Erro → Exibir mensagem → Tentar novamente
-```
+O passo a passo de como o fisio usa o sistema no dia a dia. Sem código aqui — só o "o que clica e o que acontece".
 
 ---
 
-## 2. Cadastrar Paciente
+## 1. Entrar no sistema
 
-```
-Dashboard → "Novo paciente"
-  └─ Preencher formulário (nome, nascimento, celular, observações)
-       └─ Salvar → Redirecionar para página do paciente
-```
+Primeira vez:
+- Acessa o site.
+- Clica em "Cadastrar".
+- Preenche nome, sobrenome, email, celular e senha.
+- Pronto, já entra logado.
 
----
+Depois:
+- Email e senha.
+- Cai no dashboard.
 
-## 3. Criar Episódio de Tratamento
-
-```
-Página do paciente → Aba "Episódio"
-  └─ Criar nova ficha de tratamento
-       ├─ Preencher queixa principal, histórico clínico, diagnóstico
-       ├─ Definir objetivos, frequência semanal, sessões previstas
-       ├─ Informar data de início e previsão de alta
-       └─ Salvar → Episódio criado com status "ativo"
-```
-
-> Cada paciente pode ter vários episódios ao longo do tempo, mas apenas um episódio está ativo de cada vez.
+Se errar a senha, mostra erro e deixa tentar de novo.
 
 ---
 
-## 4. Interface por Abas do Paciente
+## 2. Cadastrar um paciente
 
-A página do paciente é organizada em abas principais:
+Na lista de pacientes, clica em **"Novo paciente"**. Abre um formulário com:
 
-- **Dados**: informações pessoais do paciente.
-- **Episódio**: ficha de tratamento ativa e exercícios previstos.
-- **Sessões**: agenda e registro de sessões.
-- **Anexos**: exames, laudos e documentos relacionados ao episódio.
-- **Prontuário**: geração de relatório PDF sob demanda.
+- Nome e sobrenome (obrigatórios)
+- Data de nascimento
+- Sexo
+- Celular (com máscara)
+- Observações livres
 
-### 4.1 Stepper da sessão
-
-Na aba "Sessões", cada sessão é conduzida por um stepper de três etapas:
-
-1. **Preparar**
-   - revisar dados do paciente e do episódio ativo
-   - confirmar a lista padrão de exercícios do episódio
-   - iniciar ou criar a sessão agendada
-2. **Executar**
-   - copiar exercícios de `ficha_exercicio` para `sessao_exercicio`
-   - marcar cada exercício com status e comentário
-   - adaptar, adicionar ou remover exercícios se necessário
-3. **Encerrar**
-   - preencher observação geral da sessão
-   - finalizar a sessão
+Salva. O paciente aparece na lista. Dá pra editar depois clicando no lápis.
 
 ---
 
-## 5. Gerenciar Sessões
+## 3. Criar um plano de tratamento
 
-```
-Aba "Sessões" → "Nova sessão"
-  └─ Definir data e hora
-       └─ Salvar → Sessão criada com status "agendado"
+Entra no paciente, aba **"Plano"**, clica em **"Novo plano"**. Preenche:
 
-No dia da sessão:
-  ├─ Iniciar sessão → status muda para "em_andamento"
-  ├─ Preencher exercícios da sessão
-  │    ├─ status por exercício: realizado / adaptado / nao_realizado / superado
-  │    └─ comentário por exercício
-  ├─ Encerrar sessão → preencher observação geral
-  └─ Finalizar → status muda para "realizada"
-```
+- Queixa principal (obrigatório)
+- Histórico clínico
+- Diagnóstico
+- Objetivo do tratamento
+- Frequência semanal e total de sessões previstas
+- Data de início e previsão de alta
+- **Escolhe os exercícios** marcando uns checkboxes na lista do catálogo
 
-Se o paciente não comparecer ou a sessão for cancelada:
+Salva. O plano fica como **ativo** e vira o vigente daquele paciente.
 
-- registrar a sessão como `nao_compareceu` ou `cancelada`
-- preservar o histórico da sessão
-
-> A sessão já representa o agendamento. Não há tabela separada de `agendamento` no modelo atual.
+> Se já havia um plano ativo, ele é finalizado automaticamente. Só pode ter um ativo de cada vez.
 
 ---
 
-## 6. Exercícios do Episódio
+## 4. Agendar uma sessão
 
-```
-Aba "Episódio" → "Exercícios previstos"
-  └─ Buscar exercício no catálogo
-       └─ Adicionar à ficha de tratamento
-            ├─ Definir ordem
-            └─ Salvar → exercício registrado em `ficha_exercicio`
-```
+Duas formas:
 
-Os exercícios previstos no episódio servem de base para as sessões. Ao iniciar uma sessão, a carga padrão é copiada para `sessao_exercicio`.
+**a) Pela aba "Sessões" do paciente.** Clica em "Agendar sessão", escolhe data e hora, salva.
 
----
+**b) (Em breve) Pelo calendário.** Hoje o calendário só mostra o que já foi agendado.
 
-## 7. Gerenciar Anexos
+Regras na hora de salvar:
+- A data tem que ser no futuro.
+- Não pode ter outra sessão do mesmo fisio no mesmo horário.
 
-```
-Aba "Anexos" → "Novo anexo"
-  └─ Selecionar arquivo
-       └─ Preencher anotação (opcional)
-            └─ Salvar → Anexo vinculado ao episódio de tratamento
-```
+Quando a sessão é criada, o sistema **copia os exercícios do plano ativo** pra dentro dela. Assim, ao abrir a sessão depois, o fisio já vê a lista pronta — sem precisar montar de novo.
 
 ---
 
-## 8. Gerar Prontuário
+## 5. Ver a agenda
 
-```
-Aba "Prontuário" → "Gerar prontuário"
-  └─ Backend compila:
-       ├─ dados do paciente
-       ├─ ficha de tratamento ativa
-       ├─ sessões realizadas com exercícios e comentários
-       └─ anexos
-            └─ Gerar PDF → Exibir visualização → Download
-```
+Tela **"Agendamentos"**: calendário do mês com todas as sessões. Cada sessão aparece no dia, com horário e nome do paciente, colorida pelo status (azul = agendado, âmbar = em andamento, verde = concluído, etc.).
 
-> O prontuário é gerado sob demanda e não fica armazenado como entidade separada.
+Setas pra trocar de mês, botão "Hoje" pra voltar. Clicando numa sessão, vai direto pro detalhe dela.
 
 ---
 
-## 9. Novo ciclo de tratamento
+## 6. Iniciar e conduzir a sessão
 
-```
-Paciente com episódio ativo → Encerrar episódio atual
-  └─ Atualizar `ficha_tratamento.status` para "concluido" ou "cancelado"
-       └─ Criar novo episódio de tratamento
-            └─ Novo episódio passa a ser o ativo
-```
+Chegando o horário da sessão, o fisio abre ela. Os botões disponíveis dependem do status:
+
+**Se ainda está `agendado`:**
+- "Iniciar sessão" — muda pra `em_andamento` e libera a edição.
+- "Não compareceu" — paciente faltou.
+- "Cancelar" — desmarcou.
+
+**Durante a sessão (`em_andamento`):**
+
+A tela mostra a lista de exercícios já copiados do plano. Pra cada um, o fisio pode:
+- Mudar o status: realizado / adaptado / não realizado / superado.
+- Escrever um comentário (ex.: "fez 3 séries de 10, queixou de dor leve no joelho").
+- Clicar em "Salvar" naquele exercício.
+
+Também tem o campo **"Observações gerais"** da sessão — coisas que valem pra atendimento todo, não pra um exercício específico.
+
+**Pra fechar:** botão **"Concluir sessão"**. Pede confirmação ("depois disso a sessão não pode mais ser editada"). Confirma, e a sessão vira `concluido` — todos os campos ficam travados.
 
 ---
 
-## 10. Resumo de status
+## 7. Status que a sessão pode assumir
 
-### `ficha_tratamento.status`
-| Valor | Descrição |
-|:---|:---|
-| `ativo` | Episódio vigente de tratamento |
-| `concluido` | Episódio finalizado |
-| `cancelado` | Episódio cancelado |
+| Status | Quando |
+|---|---|
+| `agendado` | Acabou de ser marcada |
+| `em_andamento` | Fisio começou |
+| `concluido` | Sessão fechada — vira histórico imutável |
+| `cancelado` | Foi desmarcada |
+| `nao_compareceu` | Paciente faltou |
 
-### `sessao.status`
-| Valor | Descrição |
-|:---|:---|
-| `agendado` | Sessão criada e aguardando data/hora |
-| `em_andamento` | Sessão iniciada |
-| `realizada` | Sessão concluída |
-| `cancelada` | Sessão cancelada |
-| `nao_compareceu` | Paciente não compareceu |
+Os três últimos travam a sessão — não dá mais pra editar nada.
 
-### `sessao_exercicio.status`
-| Valor | Descrição |
-|:---|:---|
-| `realizado` | Exercício feito normalmente |
-| `adaptado` | Exercício feito com adaptação |
-| `nao_realizado` | Exercício não foi feito |
-| `superado` | Exercício superado pelo paciente |
-''
+---
+
+## 8. Ver o histórico do paciente
+
+Na aba "Sessões" do paciente, lista todas as sessões que ele já teve, ordenadas por data. Cada uma mostra o status e o horário. Clicando, abre o detalhe — inclusive das já fechadas, em modo só-leitura.
+
+---
+
+## 9. Trocar de plano (novo ciclo)
+
+Se o paciente termina o tratamento e volta meses depois com outra queixa, o fisio:
+
+- Vai na aba Plano, cria um plano novo.
+- O plano anterior é finalizado automaticamente.
+- A partir daí, as novas sessões agendadas usam o plano novo.
+
+O histórico do plano antigo (e das sessões dele) continua acessível.
+
+---
+
+## 10. Sair
+
+Botão de logout no canto da sidebar. Apaga o cookie e volta pra tela de login.

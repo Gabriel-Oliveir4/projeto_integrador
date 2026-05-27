@@ -1,293 +1,165 @@
-# Documentação do Banco de Dados
+# Banco de dados
 
-## Visão Geral
-
-Banco de dados relacional **PostgreSQL** para o aplicativo de acompanhamento de pacientes por fisioterapeutas. O sistema permite login do médico/fisioterapeuta, cadastro de pacientes, gerenciamento de episódios de tratamento, sessões e anexos.
-
-O **banco de exercícios** é compartilhado entre todos os fisioterapeutas e gerenciado pelo administrador do sistema.
-
-O **prontuário** não é armazenado como um conjunto separado de tabelas. Ele é gerado sob demanda como relatório (PDF), compilando os dados da ficha de tratamento, sessões, exercícios e comentários do paciente.
+O banco é o **MongoDB** (NoSQL, baseado em documentos). Cada "tabela" aqui é uma **coleção** de documentos JSON. Relacionamento entre coleções é feito guardando o `_id` de um documento dentro do outro (chamado de `ref` no Mongoose).
 
 ---
 
-## Diagrama ER (simplificado)
+## Como tudo se conecta
 
-```plantuml
-@startuml
-skinparam linetype ortho
-left to right direction
-
-entity "medico" as med {
-  * id : SERIAL <<PK>>
-    * nome : VARCHAR(100)
-      * sobrenome : VARCHAR(100)
-        * email : VARCHAR(150)
-          * senha_hash : VARCHAR(255)
-            * celular : VARCHAR(20)
-              * ativo : BOOLEAN [default true]
-                * criado_em : TIMESTAMPTZ [default NOW()]
-                }
-                
-entity "paciente" as pac {
-  * id : SERIAL <<PK>>
-    * medico_id : INT <<FK medico.id>>
-      * nome_completo : VARCHAR(200)
-        * data_nascimento : DATE
-          * celular : VARCHAR(20)
-            * ativo : BOOLEAN [default true]
-              * criado_em : TIMESTAMPTZ [default NOW()]
-              }
-              
-entity "ficha_tratamento" as ft {
-  * id : SERIAL <<PK>>
-    * paciente_id : INT <<FK paciente.id>>
-      * status : VARCHAR(20) [default 'ativo']
-        * queixa_principal : TEXT
-          * historico_clinico : TEXT
-            * diagnostico : VARCHAR(255)
-              * objetivos : TEXT
-                * frequencia_semanal : INT
-                  * sessoes_previstas : INT
-                    * data_inicio : DATE
-                      * data_previsao_alta : DATE
-                        * data_fim : DATE
-                          * observacoes : TEXT
-                            * criado_em : TIMESTAMPTZ [default NOW()]
-                            }
-                            
-entity "ficha_anexo" as fa {
-  * id : SERIAL <<PK>>
-    * ficha_tratamento_id : INT <<FK ficha_tratamento.id>>
-      * nome_arquivo : VARCHAR(255)
-        * caminho_arquivo : VARCHAR(500)
-          * tipo_arquivo : VARCHAR(50)
-            * tamanho_bytes : BIGINT
-              * anotacao : TEXT
-                * criado_em : TIMESTAMPTZ [default NOW()]
-                }
-                
-entity "sessao" as ses {
-  * id : SERIAL <<PK>>
-    * paciente_id : INT <<FK paciente.id>>
-      * ficha_tratamento_id : INT <<FK ficha_tratamento.id>>
-        * data_hora : TIMESTAMPTZ
-          * status : VARCHAR(20) [default 'agendado']
-            * observacao_geral : TEXT
-              * criado_em : TIMESTAMPTZ [default NOW()]
-              }
-              
-entity "sessao_exercicio" as se {
-  * id : SERIAL <<PK>>
-    * sessao_id : INT <<FK sessao.id>>
-      * exercicio_id : INT <<FK exercicio.id>>
-        * comentario : TEXT
-          * ordem : INT
-            * status : VARCHAR(20) [default 'realizado']
-              * removido : BOOLEAN [default false]
-              }
-              
-entity "ficha_exercicio" as fe {
-  * id : SERIAL <<PK>>
-    * ficha_tratamento_id : INT <<FK ficha_tratamento.id>>
-      * exercicio_id : INT <<FK exercicio.id>>
-        * ordem : INT
-        }
-        
-entity "exercicio" as exe {
-  * id : SERIAL <<PK>>
-    * nome : VARCHAR(150)
-      * descricao : TEXT
-        * foto_url : VARCHAR(500)
-          * ativo : BOOLEAN [default true]
-            * criado_em : TIMESTAMPTZ [default NOW()]
-            }
-            
-med ||--o{ pac
-pac ||--o{ ft
-ft ||--o{ fa
-ft ||--o{ ses
-ft ||--o{ fe
-ses ||--o{ se
-exe ||--o{ se
-exe ||--o{ fe
-@enduml
+```
+User (fisioterapeuta)
+ └── Paciente
+      └── PlanoTratamento (só 1 ativo por vez)
+           ├── PlanoExercicio  ─── Exercicio
+           └── Sessao
+                └── SessaoExercicio  ─── Exercicio
 ```
 
----
+Lendo de cima pra baixo:
 
-## Tabelas
+- Um fisio tem vários **pacientes**.
+- Cada paciente tem um **plano de tratamento** vigente.
+- O plano define quais **exercícios** o paciente vai fazer (via `PlanoExercicio`, que é a ponte entre plano e exercício).
+- Quando o fisio agenda uma **sessão**, o sistema copia os exercícios do plano pra dentro dela (via `SessaoExercicio`).
+- Isso permite registrar, em cada sessão, o que foi feito **sem alterar o plano original**.
 
-### `medico`
-
-Profissional que usa o sistema.
-
-| Coluna | Tipo | Descrição |
-|:---|:---|:---|
-| id | SERIAL | PK |
-| nome | VARCHAR(100) | Primeiro nome |
-| sobrenome | VARCHAR(100) | Sobrenome |
-| email | VARCHAR(150) | E-mail para login |
-| senha_hash | VARCHAR(255) | Hash da senha |
-| celular | VARCHAR(20) | Telefone |
-| ativo | BOOLEAN | Conta ativa |
-| criado_em | TIMESTAMPTZ | Data de criação |
+O catálogo de **exercícios** é compartilhado — todos os fisios usam os mesmos.
 
 ---
 
-### `paciente`
+## As coleções
 
-Paciente atendido pelo fisioterapeuta.
+### `User` — o fisioterapeuta
 
-| Coluna | Tipo | Descrição |
-|:---|:---|:---|
-| id | SERIAL | PK |
-| medico_id | INT | FK → medico.id |
-| nome_completo | VARCHAR(200) | Nome completo |
-| data_nascimento | DATE | Data de nascimento |
-| celular | VARCHAR(20) | Telefone |
-| ativo | BOOLEAN | Paciente ativo/inativo |
-| data_cadastro | DATE | Data de cadastro |
-| observacoes | TEXT | Observações gerais |
-| criado_em | TIMESTAMPTZ | Data de criação |
+| Campo | Tipo | Observação |
+|---|---|---|
+| `_id` | ObjectId | identificador único |
+| `nome` | string | obrigatório |
+| `sobrenome` | string | obrigatório |
+| `email` | string | único, usado pra login |
+| `senha` | string | guardada com hash (bcrypt), nunca em texto puro |
+| `celular` | string | opcional |
 
----
+### `Paciente`
 
-### `ficha_tratamento`
+| Campo | Tipo | Observação |
+|---|---|---|
+| `_id` | ObjectId | |
+| `fisio` | ObjectId → User | dono do paciente |
+| `nome` | string | obrigatório |
+| `sobrenome` | string | obrigatório |
+| `dataNascimento` | Date | opcional |
+| `sexo` | string | masculino / feminino / outro |
+| `celular` | string | opcional |
+| `observacoes` | string | opcional |
+| `status` | string | `ativo` ou `inativo` |
+| `createdAt`, `updatedAt` | Date | gerados automático |
 
-Episódio de tratamento do paciente.
+### `PlanoTratamento`
 
-| Coluna | Tipo | Descrição |
-|:---|:---|:---|
-| id | SERIAL | PK |
-| paciente_id | INT | FK → paciente.id |
-| status | VARCHAR(20) | `ativo`, `concluido`, `cancelado` |
-| queixa_principal | TEXT | Queixa principal |
-| historico_clinico | TEXT | Histórico clínico |
-| diagnostico | VARCHAR(255) | Diagnóstico |
-| objetivos | TEXT | Objetivos terapêuticos |
-| frequencia_semanal | INT | Sessões por semana |
-| sessoes_previstas | INT | Total previsto |
-| data_inicio | DATE | Início do tratamento |
-| data_previsao_alta | DATE | Previsão de alta |
-| data_fim | DATE | Término do tratamento |
-| observacoes | TEXT | Observações do episódio |
-| criado_em | TIMESTAMPTZ | Data de criação |
+O "episódio de tratamento" do paciente.
 
----
+| Campo | Tipo | Observação |
+|---|---|---|
+| `_id` | ObjectId | |
+| `paciente` | ObjectId → Paciente | |
+| `queixa` | string | obrigatório |
+| `historico` | string | opcional |
+| `diagnostico` | string | opcional |
+| `objetivo` | string | opcional |
+| `frequenciaSemanal` | number | quantas sessões por semana |
+| `sessoesPrevistas` | number | total esperado |
+| `dataInicio` | Date | opcional |
+| `previsaoAlta` | Date | opcional |
+| `status` | string | `ativo`, `finalizado` ou `cancelado` |
+| `createdAt`, `updatedAt` | Date | |
 
-### `ficha_anexo`
+> **Regra:** ao criar um plano novo, qualquer plano `ativo` anterior do mesmo paciente vira `finalizado`. Só pode existir um ativo por vez.
 
-Anexos do episódio de tratamento.
+### `Exercicio` — catálogo
 
-| Coluna | Tipo | Descrição |
-|:---|:---|:---|
-| id | SERIAL | PK |
-| ficha_tratamento_id | INT | FK → ficha_tratamento.id |
-| nome_arquivo | VARCHAR(255) | Nome original |
-| caminho_arquivo | VARCHAR(500) | Caminho/URL |
-| tipo_arquivo | VARCHAR(50) | MIME type |
-| tamanho_bytes | BIGINT | Tamanho em bytes |
-| anotacao | TEXT | Observação |
-| criado_em | TIMESTAMPTZ | Data de upload |
+| Campo | Tipo |
+|---|---|
+| `_id` | ObjectId |
+| `nome` | string |
+| `descricao` | string |
 
----
+### `PlanoExercicio` — ponte plano ↔ exercício
 
-### `exercicio`
+Quais exercícios fazem parte de um plano.
 
-Banco de exercícios compartilhado.
+| Campo | Tipo |
+|---|---|
+| `_id` | ObjectId |
+| `planotratamento` | ObjectId → PlanoTratamento |
+| `exercicio` | ObjectId → Exercicio |
+| `ordem` | number |
 
-| Coluna | Tipo | Descrição |
-|:---|:---|:---|
-| id | SERIAL | PK |
-| nome | VARCHAR(150) | Nome do exercício |
-| descricao | TEXT | Descrição |
-| foto_url | VARCHAR(500) | Imagem/URL |
-| ativo | BOOLEAN | Disponível ou não |
-| criado_em | TIMESTAMPTZ | Data de criação |
+### `Sessao`
 
----
+Um atendimento (agendado, em andamento, ou já fechado).
 
-### `sessao`
+| Campo | Tipo | Observação |
+|---|---|---|
+| `_id` | ObjectId | |
+| `fisio` | ObjectId → User | dono da sessão |
+| `paciente` | ObjectId → Paciente | |
+| `planoTratamento` | ObjectId → PlanoTratamento | |
+| `data` | Date | data e hora da sessão |
+| `status` | string | `agendado`, `em_andamento`, `concluido`, `cancelado`, `nao_compareceu` |
+| `observacoesGerais` | string | preenchido durante/ao fim |
+| `createdAt`, `updatedAt` | Date | |
 
-Sessão agendada e registrada para um episódio de tratamento.
+> **Regra:** não permite duas sessões do mesmo fisio na mesma data/hora se as duas estiverem `agendado` ou `em_andamento`.
 
-| Coluna | Tipo | Descrição |
-|:---|:---|:---|
-| id | SERIAL | PK |
-| paciente_id | INT | FK → paciente.id |
-| ficha_tratamento_id | INT | FK → ficha_tratamento.id |
-| data_hora | TIMESTAMPTZ | Data e hora da sessão |
-| status | VARCHAR(20) | `agendado`, `realizada`, `cancelada`, `nao_compareceu` |
-| observacao_geral | TEXT | Observação da sessão |
-| criado_em | TIMESTAMPTZ | Data de criação |
+### `SessaoExercicio` — exercícios feitos na sessão
 
----
+Cópia do exercício do plano, com espaço pra anotar o que aconteceu.
 
-### `sessao_exercicio`
+| Campo | Tipo | Observação |
+|---|---|---|
+| `_id` | ObjectId | |
+| `sessao` | ObjectId → Sessao | |
+| `exercicio` | ObjectId → Exercicio | |
+| `status` | string | `realizado`, `adaptado`, `nao_realizado`, `superado` |
+| `comentario` | string | opcional |
 
-Registro dos exercícios feitos em cada sessão.
+### `Anexo` (definido mas ainda não usado pela interface)
 
-| Coluna | Tipo | Descrição |
-|:---|:---|:---|
-| id | SERIAL | PK |
-| sessao_id | INT | FK → sessao.id |
-| exercicio_id | INT | FK → exercicio.id |
-| comentario | TEXT | Comentário sobre a execução |
-| ordem | INT | Ordem na sessão |
-| status | VARCHAR(20) | `realizado`, `nao_realizado`, `adaptado`, `superado` |
-| removido | BOOLEAN | Excluído logicamente |
-
----
-
-### `ficha_exercicio`
-
-Exercícios previstos para o episódio de tratamento.
-
-| Coluna | Tipo | Descrição |
-|:---|:---|:---|
-| id | SERIAL | PK |
-| ficha_tratamento_id | INT | FK → ficha_tratamento.id |
-| exercicio_id | INT | FK → exercicio.id |
-| ordem | INT | Ordem sugerida |
+| Campo | Tipo |
+|---|---|
+| `_id` | ObjectId |
+| `planotratamento` | ObjectId → PlanoTratamento |
+| `nomeArquivo` | string |
+| `urlArquivo` | string |
+| `anotacao` | string (opcional) |
 
 ---
 
-## Fluxos principais
+## Por que copiar os exercícios pra dentro da sessão?
 
-### Abertura de um episódio de tratamento
+Porque o plano pode mudar com o tempo — o fisio pode tirar um exercício, trocar por outro, ajustar a ordem. Se o registro de "o que foi feito naquela sessão de terça" apontasse direto pro plano, alterar o plano amanhã ia mexer no histórico de ontem.
 
-1. Criar paciente.
-2. Criar `ficha_tratamento` com status `ativo`.
-3. Adicionar exercícios em `ficha_exercicio`.
-4. Adicionar anexos em `ficha_anexo` se necessário.
-
-### Sessão
-
-1. Criar `sessao` com `data_hora` e `status = 'agendado'`.
-2. Ao iniciar a sessão, copiar exercícios de `ficha_exercicio` para `sessao_exercicio`.
-3. Registrar comentários e atualizar `sessao_exercicio.status` se necessário.
-4. No fim da sessão, atualizar `sessao.status = 'realizada'` ou outro status.
-
-### Novo ciclo de tratamento
-
-1. Encerrar a ficha atual (`ficha_tratamento.status = 'concluido'`).
-2. Criar nova `ficha_tratamento` para o novo episódio.
+Com a cópia, cada sessão fica congelada no tempo: "no dia X, esses eram os exercícios prescritos, e o paciente fez isso com cada um". O plano pode evoluir livremente sem corromper o histórico.
 
 ---
 
-## ex
+## Status que importam
 
-```sql
-SELECT * FROM ficha_tratamento WHERE paciente_id = :paciente_id AND status = 'ativo' ORDER BY criado_em DESC LIMIT 1;
-```
+**`PlanoTratamento.status`**
+- `ativo` — em curso
+- `finalizado` — encerrado (manualmente ou por substituição)
+- `cancelado` — abortado
 
-```sql
-SELECT * FROM sessao WHERE ficha_tratamento_id = :ficha_id ORDER BY data_hora;
-```
+**`Sessao.status`**
+- `agendado` — marcada pra acontecer
+- `em_andamento` — fisio iniciou
+- `concluido` — fechada, vira histórico imutável
+- `cancelado` — cancelada antes
+- `nao_compareceu` — paciente faltou
 
-```sql
-SELECT se.* FROM sessao_exercicio se
-JOIN sessao s ON s.id = se.sessao_id
-WHERE s.ficha_tratamento_id = :ficha_id
-ORDER BY s.data_hora, se.ordem;
-```
+**`SessaoExercicio.status`**
+- `realizado` — feito normalmente
+- `adaptado` — feito com adaptação
+- `nao_realizado` — não fez
+- `superado` — paciente foi além do esperado
