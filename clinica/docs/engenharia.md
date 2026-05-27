@@ -8,18 +8,12 @@ Aqui vão as decisões técnicas: que ferramentas, por quê, e como as peças se
 
 | Camada | Ferramenta | Por que |
 |---|---|---|
-| App inteiro | **Next.js 15** (TypeScript) | Frontend e backend no mesmo projeto. Menos repositório, menos deploy, menos dor de cabeça. |
-| Banco | **MongoDB** (via Mongoose) | NoSQL é simples de subir e flexível. O Atlas tem tier grátis. |
-| Login | **JWT em cookie httpOnly** | Cookie vai sozinho em toda requisição, navegador não pode ler via JavaScript (mais seguro). |
+| App inteiro | **Next.js 15** (TypeScript) | Frontend e backend no mesmo projeto. Menos repositório |
+| Banco | **MongoDB** (via Mongoose) | NoSQL é simples de subir e flexível |
+| Login | **JWT em cookie httpOnly** | Cookie vai sozinho em toda requisição, navegador não pode ler via JavaScript (mais seguro) |
 | Senha | **bcrypt** | Padrão da indústria pra hash de senha. |
-| Estilo | **Tailwind CSS + shadcn/ui** | Tailwind é rápido de escrever; shadcn dá componentes bonitos já prontos pra customizar. |
-| Hospedagem | **Vercel** | Faz deploy do Next direto do Git. Tier grátis dá conta. |
-
----
-
-## Por que Next.js em vez de "backend separado"?
-
-Pra um projeto feito por uma pessoa só, ter backend Python + frontend React separados é trabalho dobrado: dois deploys, duas linguagens, dois `package.json`. O Next.js permite ter as duas coisas no mesmo lugar — uma pasta com as telas, outra pasta com as rotas de API, mesmo idioma (TypeScript) nos dois lados.
+| Estilo | **Tailwind CSS + shadcn/ui** | Tailwind é rápido de escrever |
+| Hospedagem | **Vercel** | Faz deploy do Next direto do Git |
 
 ---
 
@@ -78,7 +72,7 @@ Todo paciente tem um campo `fisio` que aponta pro User dono. Todas as consultas 
 
 ---
 
-## Regras de negócio principais
+## Regras de negócio principais(atuais)
 
 - **Senha sempre com hash** — bcrypt, nunca em texto puro.
 - **Um paciente, um plano ativo** — criar um novo finaliza o anterior automaticamente.

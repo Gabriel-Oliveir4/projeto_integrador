@@ -1,7 +1,5 @@
 # Fluxos do sistema
 
-O passo a passo de como o fisio usa o sistema no dia a dia. Sem código aqui — só o "o que clica e o que acontece".
-
 ---
 
 ## 1. Entrar no sistema
