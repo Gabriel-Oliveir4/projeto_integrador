@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import Sessao from "@/lib/models/sessao";
 
-// Chamado pelo cron da Vercel (vercel.json) ou por qualquer scheduler externo.
-// Marca como "nao_compareceu" sessões agendadas que passaram 24h sem atualização de status.
+// chamado pelo cron da Vercel (vercel.json) ou por qualquer scheduler externo.
+// marca como "nao_compareceu" sessões agendadas que passaram 24h sem atualização de status
 export async function GET(request: Request) {
   const secret = request.headers.get("x-cron-secret");
   if (secret !== process.env.CRON_SECRET) {

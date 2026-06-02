@@ -6,7 +6,7 @@ import "@/lib/models/Exercicio";
 import "@/lib/models/Paciente";
 import { apiHandler } from "@/lib/apiHandler";
 
-// Listar sessões do fisio logado (filtra opcionalmente por paciente/plano/range de datas)
+// listar sessões do fisio logado (filtra opcionalmente por paciente/plano/range de datas)
 export const GET = apiHandler(async (request, userId) => {
   const { searchParams } = new URL(request.url);
   const filtro: any = { fisio: userId };
@@ -25,7 +25,7 @@ export const GET = apiHandler(async (request, userId) => {
   return NextResponse.json(sessoes);
 });
 
-// Agendar sessão — checa conflito de horário, cria Sessao + SessaoExercicio
+// agendar sessão — checa conflito de horário, cria Sessao + SessaoExercicio
 export const POST = apiHandler(async (request, userId) => {
   const body = await request.json();
   // body: { paciente, planoTratamento, data, observacoesGerais? }
