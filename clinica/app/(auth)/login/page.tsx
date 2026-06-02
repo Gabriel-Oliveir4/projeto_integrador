@@ -74,7 +74,7 @@ export default function LoginPage() {
       <Card sx={{ width: "100%", maxWidth: 440, boxShadow: 3 }}>
         <CardContent sx={{ p: 4 }}>
           <Box sx={{ mb: 3 }}>
-            <Typography variant="h5" component="h1" fontWeight={600}>
+            <Typography variant="h5" component="h1" sx={{ fontWeight: 600 }}>
               Entrar
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
@@ -103,12 +103,14 @@ export default function LoginPage() {
               }}
               error={!!erros.email}
               helperText={erros.email}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <EmailOutlined fontSize="small" />
-                  </InputAdornment>
-                ),
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <EmailOutlined fontSize="small" />
+                    </InputAdornment>
+                  ),
+                },
               }}
             />
 
@@ -125,23 +127,25 @@ export default function LoginPage() {
               }}
               error={!!erros.senha}
               helperText={erros.senha}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <LockOutlined fontSize="small" />
-                  </InputAdornment>
-                ),
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton
-                      onClick={() => setMostrarSenha((v) => !v)}
-                      edge="end"
-                      size="small"
-                    >
-                      {mostrarSenha ? <VisibilityOff /> : <Visibility />}
-                    </IconButton>
-                  </InputAdornment>
-                ),
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <LockOutlined fontSize="small" />
+                    </InputAdornment>
+                  ),
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        onClick={() => setMostrarSenha((v) => !v)}
+                        edge="end"
+                        size="small"
+                      >
+                        {mostrarSenha ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                },
               }}
             />
 
@@ -160,7 +164,7 @@ export default function LoginPage() {
 
             <Typography variant="body2" align="center" color="text.secondary">
               Não tem conta?{" "}
-              <MuiLink href="/register" underline="hover" color="text.primary" fontWeight={500}>
+              <MuiLink href="/register" underline="hover" sx={{ color: "text.primary", fontWeight: 500 }}>
                 Cadastre-se
               </MuiLink>
             </Typography>
