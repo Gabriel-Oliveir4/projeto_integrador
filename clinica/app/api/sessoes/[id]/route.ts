@@ -1,19 +1,22 @@
 import { NextResponse } from "next/server";
 import Sessao from "@/lib/models/sessao";
-import SessaoExercicio from "@/lib/models/SessaoExercicio";
-import "@/lib/models/Exercicio";
+import Paciente from "@/lib/models/Paciente";
 import { apiHandler } from "@/lib/apiHandler";
 
-// Detalhe da sessão + exercícios
-export const GET = apiHandler(async (_req, _userId, params) => {
-  const sessao = await Sessao.findById(params.id);
+export const GET = apiHandler(async (_req, userId, params) => {
+  const sessao = await Sessao.findOne({ _id: params.id, fisio: userId }).lean();
   if (!sessao) return NextResponse.json({ erro: "Sessão não encontrada" }, { status: 404 });
 
-  const exercicios = await SessaoExercicio.find({ sessao: params.id }).populate("exercicio");
+  const exercicios = ((sessao as any).exercicios || []).map((e: any) => ({
+    _id: e._id,
+    status: e.status,
+    comentario: e.comentario,
+    exercicio: { _id: e.exercicio, nome: e.nome, descricao: e.descricao },
+  }));
+
   return NextResponse.json({ sessao, exercicios });
 });
 
-// Editar sessão (data, status, observações)
 export const PUT = apiHandler(async (request, userId, params) => {
   const body = await request.json();
 
@@ -23,7 +26,7 @@ export const PUT = apiHandler(async (request, userId, params) => {
       fisio: userId,
       data: new Date(body.data),
       status: { $in: ["agendado", "em_andamento"] },
-    });
+    }).select("_id").lean();
     if (conflito) {
       return NextResponse.json(
         { erro: "Já existe uma sessão agendada neste horário." },
@@ -32,15 +35,35 @@ export const PUT = apiHandler(async (request, userId, params) => {
     }
   }
 
-  const sessao = await Sessao.findByIdAndUpdate(params.id, body, { new: true, runValidators: true });
+  const anterior = await Sessao.findOne({ _id: params.id, fisio: userId }).select("status paciente data").lean();
+  if (!anterior) return NextResponse.json({ erro: "Sessão não encontrada" }, { status: 404 });
+
+  const sessao = await Sessao.findOneAndUpdate(
+    { _id: params.id, fisio: userId },
+    body,
+    { new: true, runValidators: true }
+  );
   if (!sessao) return NextResponse.json({ erro: "Sessão não encontrada" }, { status: 404 });
+
+  const eraConcluida = (anterior as any).status === "concluido";
+  const agoraConcluida = sessao.status === "concluido";
+  if (!eraConcluida && agoraConcluida) {
+    await Paciente.updateOne(
+      { _id: sessao.paciente },
+      { $inc: { sessoesRealizadas: 1 }, $set: { ultimaSessao: sessao.data } }
+    );
+  } else if (eraConcluida && !agoraConcluida) {
+    await Paciente.updateOne(
+      { _id: sessao.paciente },
+      { $inc: { sessoesRealizadas: -1 } }
+    );
+  }
+
   return NextResponse.json(sessao);
 });
 
-// Deletar sessão (cascata em SessaoExercicio)
-export const DELETE = apiHandler(async (_req, _userId, params) => {
-  const sessao = await Sessao.findByIdAndDelete(params.id);
+export const DELETE = apiHandler(async (_req, userId, params) => {
+  const sessao = await Sessao.findOneAndDelete({ _id: params.id, fisio: userId });
   if (!sessao) return NextResponse.json({ erro: "Sessão não encontrada" }, { status: 404 });
-  await SessaoExercicio.deleteMany({ sessao: params.id });
   return NextResponse.json({ mensagem: "Sessão removida" });
 });

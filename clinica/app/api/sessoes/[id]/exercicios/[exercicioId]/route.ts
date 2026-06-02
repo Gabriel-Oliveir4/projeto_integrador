@@ -1,15 +1,23 @@
 import { NextResponse } from "next/server";
-import SessaoExercicio from "@/lib/models/SessaoExercicio";
+import Sessao from "@/lib/models/sessao";
 import { apiHandler } from "@/lib/apiHandler";
 
-// Atualizar status/comentário de um exercício dentro de uma sessão
-export const PUT = apiHandler(async (request, _userId, params) => {
-  const body = await request.json(); // { status?, comentario? }
-  const updated = await SessaoExercicio.findOneAndUpdate(
-    { sessao: params.id, _id: params.exercicioId },
-    body,
+export const PUT = apiHandler(async (request, userId, params) => {
+  const body = await request.json();
+  const set: any = {};
+  if (body.status !== undefined) set["exercicios.$.status"] = body.status;
+  if (body.comentario !== undefined) set["exercicios.$.comentario"] = body.comentario;
+
+  const sessao = await Sessao.findOneAndUpdate(
+    { _id: params.id, fisio: userId, "exercicios._id": params.exercicioId },
+    { $set: set },
     { new: true, runValidators: true }
+  ).lean();
+
+  if (!sessao) return NextResponse.json({ erro: "Exercício da sessão não encontrado" }, { status: 404 });
+
+  const item = ((sessao as any).exercicios || []).find(
+    (e: any) => String(e._id) === String(params.exercicioId)
   );
-  if (!updated) return NextResponse.json({ erro: "Exercício da sessão não encontrado" }, { status: 404 });
-  return NextResponse.json(updated);
+  return NextResponse.json(item);
 });

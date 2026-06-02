@@ -1,12 +1,8 @@
 import { NextResponse } from "next/server";
 import Sessao from "@/lib/models/sessao";
-import SessaoExercicio from "@/lib/models/SessaoExercicio";
-import PlanoExercicio from "@/lib/models/PlanoExercicio";
-import "@/lib/models/Exercicio";
-import "@/lib/models/Paciente";
+import Paciente from "@/lib/models/Paciente";
 import { apiHandler } from "@/lib/apiHandler";
 
-// listar sessões do fisio logado (filtra opcionalmente por paciente/plano/range de datas)
 export const GET = apiHandler(async (request, userId) => {
   const { searchParams } = new URL(request.url);
   const filtro: any = { fisio: userId };
@@ -21,15 +17,22 @@ export const GET = apiHandler(async (request, userId) => {
     if (de) filtro.data.$gte = new Date(de);
     if (ate) filtro.data.$lte = new Date(ate);
   }
-  const sessoes = await Sessao.find(filtro).populate("paciente", "nome sobrenome").sort({ data: 1 });
-  return NextResponse.json(sessoes);
+
+  const sessoes = await Sessao.find(filtro)
+    .select("-exercicios")
+    .sort({ data: 1 })
+    .lean();
+
+  const resposta = sessoes.map((s: any) => ({
+    ...s,
+    paciente: { _id: s.paciente, nome: s.pacienteNome?.split(" ")[0] || "", sobrenome: s.pacienteNome?.split(" ").slice(1).join(" ") || "" },
+  }));
+
+  return NextResponse.json(resposta);
 });
 
-// agendar sessão — checa conflito de horário, cria Sessao + SessaoExercicio
 export const POST = apiHandler(async (request, userId) => {
   const body = await request.json();
-  // body: { paciente, planoTratamento, data, observacoesGerais? }
-
   const dataSessao = new Date(body.data);
 
   if (dataSessao < new Date()) {
@@ -43,7 +46,7 @@ export const POST = apiHandler(async (request, userId) => {
     fisio: userId,
     data: dataSessao,
     status: { $in: ["agendado", "em_andamento"] },
-  });
+  }).select("_id").lean();
   if (conflito) {
     return NextResponse.json(
       { erro: "Já existe uma sessão agendada neste horário." },
@@ -51,18 +54,42 @@ export const POST = apiHandler(async (request, userId) => {
     );
   }
 
-  const sessao = await Sessao.create({ ...body, fisio: userId });
-
-  const planoExs = await PlanoExercicio.find({ planotratamento: body.planoTratamento }).sort({ ordem: 1 });
-  if (planoExs.length > 0) {
-    await SessaoExercicio.insertMany(
-      planoExs.map((pe) => ({
-        sessao: sessao._id,
-        exercicio: pe.exercicio,
-        status: "realizado",
-      }))
-    );
+  const paciente = await Paciente.findOne(
+    { _id: body.paciente, fisio: userId, "planos._id": body.planoTratamento },
+    { nome: 1, sobrenome: 1, "planos.$": 1 }
+  ).lean();
+  if (!paciente) {
+    return NextResponse.json({ erro: "Paciente ou plano não encontrado." }, { status: 404 });
   }
+
+  const plano: any = paciente.planos[0];
+  const exerciciosEmbed = (plano.exercicios || []).map((e: any) => ({
+    exercicio: e.exercicio,
+    nome: e.nome,
+    descricao: e.descricao,
+    ordem: e.ordem,
+    status: "realizado",
+  }));
+
+  const sessao = await Sessao.create({
+    fisio: userId,
+    paciente: body.paciente,
+    pacienteNome: `${paciente.nome} ${paciente.sobrenome}`.trim(),
+    planoTratamento: body.planoTratamento,
+    planoQueixa: plano.queixa,
+    data: dataSessao,
+    observacoesGerais: body.observacoesGerais,
+    exercicios: exerciciosEmbed,
+  });
+
+  await Paciente.updateOne(
+    { _id: body.paciente },
+    {
+      $set: {
+        proximaSessao: dataSessao,
+      },
+    }
+  );
 
   return NextResponse.json(sessao, { status: 201 });
 });

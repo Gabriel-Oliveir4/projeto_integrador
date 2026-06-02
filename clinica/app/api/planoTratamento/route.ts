@@ -1,59 +1,74 @@
 import { NextResponse } from "next/server";
-import PlanoTratamento from "@/lib/models/PlanoTratamento";
-import PlanoExercicio from "@/lib/models/PlanoExercicio";
-import "@/lib/models/Exercicio";
+import Paciente from "@/lib/models/Paciente";
+import Exercicio from "@/lib/models/Exercicio";
 import { apiHandler } from "@/lib/apiHandler";
 
-// Listar planos de um paciente, com exercícios agrupados por plano
-export const GET = apiHandler(async (request) => {
+export const GET = apiHandler(async (request, userId) => {
   const { searchParams } = new URL(request.url);
   const pacienteId = searchParams.get("pacienteId");
+  if (!pacienteId) return NextResponse.json([]);
 
-  const planos = await PlanoTratamento.find({ paciente: pacienteId }).sort({ createdAt: -1 });
-  if (planos.length === 0) return NextResponse.json([]);
+  const paciente = await Paciente.findOne(
+    { _id: pacienteId, fisio: userId },
+    { planos: 1 }
+  ).lean();
+  if (!paciente) return NextResponse.json([]);
 
-  const planoIds = planos.map((p) => p._id);
-  const pes = await PlanoExercicio.find({ planotratamento: { $in: planoIds } })
-    .populate("exercicio")
-    .sort({ ordem: 1 });
+  const planos = (paciente.planos || [])
+    .slice()
+    .sort((a: any, b: any) => +new Date(b.createdAt) - +new Date(a.createdAt))
+    .map((p: any) => ({
+      _id: p._id,
+      paciente: pacienteId,
+      queixa: p.queixa,
+      historico: p.historico,
+      diagnostico: p.diagnostico,
+      objetivo: p.objetivo,
+      frequenciaSemanal: p.frequenciaSemanal,
+      sessoesPrevistas: p.sessoesPrevistas,
+      dataInicio: p.dataInicio,
+      previsaoAlta: p.previsaoAlta,
+      status: p.status,
+      createdAt: p.createdAt,
+      updatedAt: p.updatedAt,
+      exercicios: (p.exercicios || []).map((e: any) => ({
+        _id: e._id,
+        ordem: e.ordem,
+        exercicio: { _id: e.exercicio, nome: e.nome, descricao: e.descricao },
+      })),
+      anexos: p.anexos || [],
+    }));
 
-  const porPlano: Record<string, any[]> = {};
-  for (const pe of pes) {
-    const key = String(pe.planotratamento);
-    if (!porPlano[key]) porPlano[key] = [];
-    porPlano[key].push({ _id: pe._id, exercicio: pe.exercicio, ordem: pe.ordem });
-  }
-
-  const resposta = planos.map((p) => ({
-    ...p.toObject(),
-    exercicios: porPlano[String(p._id)] || [],
-  }));
-
-  return NextResponse.json(resposta);
+  return NextResponse.json(planos);
 });
 
-// Criar novo plano + linhas de PlanoExercicio
-export const POST = apiHandler(async (request) => {
+export const POST = apiHandler(async (request, userId) => {
   const body = await request.json();
-  const { exerciciosIds = [], ...dados } = body;
+  const { paciente: pacienteId, exerciciosIds = [], ...dados } = body;
 
-  // Garante que só existe um plano ativo por paciente
-  await PlanoTratamento.updateMany(
-    { paciente: dados.paciente, status: "ativo" },
-    { status: "finalizado" }
-  );
+  const paciente = await Paciente.findOne({ _id: pacienteId, fisio: userId });
+  if (!paciente) return NextResponse.json({ erro: "Paciente não encontrado" }, { status: 404 });
 
-  const plano = await PlanoTratamento.create(dados);
+  paciente.planos.forEach((p: any) => {
+    if (p.status === "ativo") p.status = "finalizado";
+  });
 
+  let exerciciosEmbed: any[] = [];
   if (Array.isArray(exerciciosIds) && exerciciosIds.length > 0) {
-    await PlanoExercicio.insertMany(
-      exerciciosIds.map((id: string, i: number) => ({
-        planotratamento: plano._id,
-        exercicio: id,
-        ordem: i + 1,
-      }))
-    );
+    const exs = await Exercicio.find({ _id: { $in: exerciciosIds } }).lean();
+    const mapa = new Map(exs.map((e: any) => [String(e._id), e]));
+    exerciciosEmbed = exerciciosIds
+      .map((id: string, i: number) => {
+        const ex = mapa.get(String(id));
+        if (!ex) return null;
+        return { exercicio: ex._id, nome: ex.nome, descricao: ex.descricao, ordem: i + 1 };
+      })
+      .filter(Boolean);
   }
 
-  return NextResponse.json(plano, { status: 201 });
+  paciente.planos.push({ ...dados, exercicios: exerciciosEmbed, anexos: [] } as any);
+  await paciente.save();
+
+  const novo = paciente.planos[paciente.planos.length - 1];
+  return NextResponse.json({ ...novo.toObject(), paciente: pacienteId }, { status: 201 });
 });
